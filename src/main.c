@@ -124,7 +124,7 @@ struct _AnyOption {
             char*   name;
             int     length;
         } l;
-    };
+    } u;
 };
 
 typedef struct _AnyOption AnyOption;
@@ -180,8 +180,8 @@ int parse_options(
                         memset(&opt, 0, sizeof(opt));
                         opt.type = OT_LONG;
                         opt.id = long_options[op_idx].id;
-                        opt.l.name = long_options[op_idx].name;
-                        opt.l.length = long_options[op_idx].name_length;
+                        opt.u.l.name = long_options[op_idx].name;
+                        opt.u.l.length = long_options[op_idx].name_length;
                         if (opt.argc = long_options[op_idx].number_of_args)
                             for (int i = 0; i < 4; ++i)
                                 opt.argv[i] = argv[idx + i + 1];
@@ -211,7 +211,7 @@ int parse_options(
                             memset(&opt, 0, sizeof(opt));
                             opt.type = OT_SHORT;
                             opt.id = short_options[op_idx].id;
-                            opt.s.name = short_options[op_idx].name;
+                            opt.u.s.name = short_options[op_idx].name;
                             if (opt.argc = short_options[op_idx].number_of_args)
                                 for (int i = 0; i < 4; ++i)
                                     opt.argv[i] = argv[idx + i + 1];
