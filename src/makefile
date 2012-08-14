@@ -2,7 +2,8 @@ CC=gcc
 CFLAGS=-c -std=c99 -Wall -g
 LDFLAGS=-std=c99 -g
 SOURCES=\
-    main.c
+    main.c \
+    config.c
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=yt
 
