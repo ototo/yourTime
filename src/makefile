@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-c -std=c99 -Wall
-LDFLAGS=-std=c99
+CFLAGS=-c -std=c99 -Wall -g
+LDFLAGS=-std=c99 -g
 SOURCES=\
     main.c
 OBJECTS=$(SOURCES:.cpp=.o)
