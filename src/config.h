@@ -21,6 +21,7 @@
 /* Configuration for the program. */
 typedef struct _Config {
     unsigned int    verbosity   : VERBOSITY_BITS;
+    char            config_file[_PC_PATH_MAX];
 } Config;
 
 /* Option definitions */
@@ -40,14 +41,16 @@ struct _ShortOptionDefinition
     char        name;
     OptionId    id;
     int         number_of_args  : 2;
+    char        *help;
 };
 
 struct _LongOptionDefinition
 {
-    char*       name;
+    char        *name;
     int         name_length;
     OptionId    id;
     int         number_of_args  : 2;
+    char        *help;
 };
 
 typedef struct _ShortOptionDefinition ShortOptionDefinition;
@@ -63,14 +66,14 @@ typedef enum _OptionType OptionType;
 struct _AnyOption {
     OptionType  type;
     OptionId    id;
-    char*       argv[4];
+    char        *argv[4];
     int         argc;
     union {
         struct {
             char    name;
         } s;
         struct {
-            char*   name;
+            char    *name;
             int     length;
         } l;
     } u;
@@ -78,16 +81,17 @@ struct _AnyOption {
 
 typedef struct _AnyOption AnyOption;
 
-typedef void (*OptionProcessor)(AnyOption* option, Config* config);
+typedef void (*OptionProcessor)(AnyOption *option, Config *config);
 
 
 /* forward declarations */
-int parse_options(int argc, char* argv[],
-                  const ShortOptionDefinition* short_options,
-                  const LongOptionDefinition* long_options,
+int parse_options(int argc, char *argv[],
+                  const ShortOptionDefinition *short_options,
+                  const LongOptionDefinition *long_options,
                   OptionProcessor processor, Config *config);
-void process_option(AnyOption* option, Config* cfg);
-void print_config(Config* config);
-void print_version(Config* config);
-void print_usage(Config* config);
+void process_option(AnyOption *option, Config *cfg);
+void print_config(Config *config);
+void print_version(Config *config);
+void print_usage(Config *config);
 
+int parse_config(char *config_file);

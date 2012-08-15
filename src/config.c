@@ -57,7 +57,8 @@ int parse_options(
                         opt.id = long_options[op_idx].id;
                         opt.u.l.name = long_options[op_idx].name;
                         opt.u.l.length = long_options[op_idx].name_length;
-                        if (opt.argc = long_options[op_idx].number_of_args)
+                        if ((opt.argc =
+                                long_options[op_idx].number_of_args))
                             for (int i = 0; i < 4; ++i)
                                 opt.argv[i] = argv[idx + i + 1];
 
@@ -88,8 +89,8 @@ int parse_options(
                             opt.type = OT_SHORT;
                             opt.id = short_options[op_idx].id;
                             opt.u.s.name = short_options[op_idx].name;
-                            if (opt.argc =
-                                    short_options[op_idx].number_of_args)
+                            if ((opt.argc =
+                                    short_options[op_idx].number_of_args))
                                 for (int i = 0; i < 4; ++i)
                                     opt.argv[i] = argv[idx + i + 1];
 
@@ -206,3 +207,7 @@ void print_usage(Config* config)
     );
 }
 
+int parse_config(char *config_file)
+{
+    return -1;
+}

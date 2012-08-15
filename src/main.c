@@ -5,7 +5,6 @@
  * TODO: complete heared (license, author, etc)
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,6 +83,12 @@ int main(int argc, char* argv[])
 
     if (cfg.verbosity > 4)
         print_version(&cfg);
+
+    if (parse_config("~/.yourTime/config"))
+    {
+        fprintf(stderr, "Error parsing the config file!\n");
+        return 2;
+    }
 
     /*
     printf("Parsed %d options, %d free arguments are present:\n",
