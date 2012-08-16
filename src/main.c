@@ -11,6 +11,8 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "commands.h"
+
 
 /* commands */
 #define CMD_START "start"
@@ -78,16 +80,27 @@ int main(int argc, char* argv[])
                                    process_option, &cfg)) < 0)
     {
         fprintf(stderr, "Error parsing arguments!\n");
-        return 1;
+        // TODO: improve error reporting
+        return idx_args;
     }
 
     if (cfg.verbosity > 4)
         print_version(&cfg);
 
-    if (parse_config("~/.yourTime/config"))
+    int res;
+
+    if ((res = parse_config("~/.yourTime/config")))
     {
+        // TODO: improve error reporting
         fprintf(stderr, "Error parsing the config file!\n");
-        return 2;
+        return res;
+    }
+
+    if ((res = process_command(argc - idx_args, &argv[idx_args], &cfg)))
+    {
+        // TODO: improve error reporting
+        fprintf(stderr, "Error processing the command!\n");
+        return res;
     }
 
     /*

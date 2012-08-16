@@ -79,11 +79,12 @@ int parse_options(
                 for (char* ptr = &argv[idx][1]; *ptr; ++ptr) {
                     /* printf("- parsing symbol at %d ('%c')...\n", 
                         ptr - &argv[idx][1], *ptr); */
-                    for (int op_idx = 0; short_options[op_idx].id != -1 ;
+                    int op_idx;
+                    for (op_idx = 0; short_options[op_idx].id != -1 ;
                             ++op_idx) {
                         /* printf(". checking shorter option '%c'...\n",
                             options[op_idx].shorter); */
-                        if (*ptr == short_options[op_idx].name){
+                        if (*ptr == short_options[op_idx].name) {
 
                             memset(&opt, 0, sizeof(opt));
                             opt.type = OT_SHORT;
@@ -105,6 +106,10 @@ int parse_options(
                             */
                             break;
                         }
+                    }
+                    if (short_options[op_idx].id == -1) {
+                        fprintf(stderr, "Invalid switch '%c' - "
+                                        "ignoring.\n", *ptr);
                     }
                 }
             }
@@ -209,5 +214,5 @@ void print_usage(Config* config)
 
 int parse_config(char *config_file)
 {
-    return -1;
+    return 0;
 }

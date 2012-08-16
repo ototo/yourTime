@@ -4,7 +4,8 @@ LDFLAGS=-std=c99 -g
 SOURCES=\
     main.c \
     config.c \
-    database.c
+    database.c \
+    commands.c
 OBJECTS=$(SOURCES:.c=.o)
 LIBS=-lsqlite
 EXECUTABLE=yt
@@ -23,6 +24,8 @@ config.h: version.h
 config.o: config.c config.h
 database.h: config.h
 database.o: database.c database.h
+commands.h: config.h
+commands.c: commands.h
 # end
 
 $(EXECUTABLE): $(OBJECTS) 
