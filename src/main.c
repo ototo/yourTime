@@ -1,5 +1,5 @@
 /* yourTime
- * 
+ *
  * Main program entry file.
  *
  * TODO: complete heared (license, author, etc)
@@ -47,7 +47,8 @@ LongOptionDefinition long_options[] = {
     {
         .name = "help",
         .name_length = 4,
-        .id = OP_HELP,
+        .id = OP_HELP_1,
+        .number_of_args = 1,
     },
     {
         .name = "version",
@@ -70,9 +71,35 @@ LongOptionDefinition long_options[] = {
     }
 };
 
+/* Setting variables. */
+SettingDefinition settings[] = {
+    {
+        .id = ST_CONFIG_FILE,
+        .name = "config_file",
+        .def_value = DEFAULT_CONFIG_FILE,
+        .offset = 0,
+        .description =
+            "fully qualified file name to read configuration from; "
+            "default is '" DEFAULT_CONFIG_FILE "'",
+    },
+    {
+        .id = ST_DATABASE_FILE,
+        .name = "database_file",
+        .def_value = DEFAULT_DATABASE_FILE,
+        .offset = 0,
+        .description =
+            "fully qualified database file name to store information in; "
+            "default is '" DEFAULT_DATABASE_FILE "'",
+    },
+    {
+        .id = -1,
+    }
+};
+
 int main(int argc, char* argv[])
 {
     memset(&cfg, 0, sizeof(cfg));
+    cfg.setting_defs = settings;
     cfg.verbosity = DEFAULT_VERBOSITY;
     int idx_args = -1;
     if ((idx_args =  parse_options(argc, argv,
@@ -110,7 +137,6 @@ int main(int argc, char* argv[])
         printf("\t'%s'\n", argv[idx_args]);
 
     printf("\n");
-    print_config(&cfg);
     */
 
     return 0;

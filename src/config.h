@@ -1,5 +1,5 @@
 /* yourTime
- * 
+ *
  * Configuration related structures and functions.
  *
  * TODO: complete header (license, author, etc)
@@ -15,19 +15,45 @@
 #include "version.h"
 
 #define DEFAULT_VERBOSITY 1
+#define DEFAULT_CONFIG_FILE "~/.yourTube/config"
+#define DEFAULT_DATABASE_FILE "~/.yourTime/yourTime.sqlite"
+
 #define VERBOSITY_BITS 3
 
 
-/* Configuration for the program. */
+/* Configuration setting definition structure */
+
+enum _SettingId {
+    ST_CONFIG_FILE = 0,
+    ST_DATABASE_FILE,
+    ST_LOG_FILE,
+};
+
+typedef enum _SettingId SettingId;
+
+struct _SettingDefinition {
+    SettingId   id;
+    char        *name;
+    char        *def_value;
+    int         offset;
+    char        *description;
+};
+
+typedef struct _SettingDefinition SettingDefinition;
+
+
+/* In-memory configuration for the program. */
 typedef struct _Config {
-    unsigned int    verbosity   : VERBOSITY_BITS;
-    char            config_file[_PC_PATH_MAX];
+    SettingDefinition   *setting_defs;
+    unsigned int        verbosity   : VERBOSITY_BITS;
+    char                config_file[_PC_PATH_MAX];
 } Config;
 
 /* Option definitions */
 
 enum _OptionId {
     OP_HELP = 0,
+    OP_HELP_1,
     OP_VERSION,
     OP_VERBOSE,
     OP_VERBOSITY_1,
@@ -91,6 +117,7 @@ int parse_options(int argc, char *argv[],
                   OptionProcessor processor, Config *config);
 void process_option(AnyOption *option, Config *cfg);
 void print_config(Config *config);
+void print_settings(Config *config);
 void print_version(Config *config);
 void print_usage(Config *config);
 

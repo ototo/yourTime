@@ -1,5 +1,5 @@
 /* yourTime
- * 
+ *
  * Configuration related structures and functions.
  *
  * TODO: complete header (license, author, etc)
@@ -43,6 +43,10 @@ int parse_options(
         /* printf("* parsing option %d...\n", idx); */
         if (argv[idx][0] == '-') {
             if (argv[idx][1] == '-') {
+                /* double dash with no name = end of options */
+                if (argv[idx][2] == ' ' || argv[idx][2] == '\0')
+                    return idx + 1;
+
                 /* double-dash option - a longer one */
                 for (int op_idx = 0; long_options[op_idx].id != -1; ++op_idx)
                 {
@@ -58,9 +62,18 @@ int parse_options(
                         opt.u.l.name = long_options[op_idx].name;
                         opt.u.l.length = long_options[op_idx].name_length;
                         if ((opt.argc =
-                                long_options[op_idx].number_of_args))
-                            for (int i = 0; i < 4; ++i)
+                                long_options[op_idx].number_of_args)) {
+                            if (idx >= argc - 1) {
+                                fprintf(stderr,
+                                        "Option '--%s' requires %d "
+                                        "argument%s", &argv[idx][2],
+                                        opt.argc, (opt.argc % 10 == 1)
+                                                    ? "s" : "");
+                                return argc;
+                            }
+                            for (int i = 0; i < opt.argc; ++i)
                                 opt.argv[i] = argv[idx + i + 1];
+                        }
 
                         processor(&opt, config);
 
@@ -77,7 +90,7 @@ int parse_options(
             else {
                 /* single-dash option - a shorter one */
                 for (char* ptr = &argv[idx][1]; *ptr; ++ptr) {
-                    /* printf("- parsing symbol at %d ('%c')...\n", 
+                    /* printf("- parsing symbol at %d ('%c')...\n",
                         ptr - &argv[idx][1], *ptr); */
                     int op_idx;
                     for (op_idx = 0; short_options[op_idx].id != -1 ;
@@ -143,6 +156,11 @@ void process_option(AnyOption* option, Config* cfg)
     case OP_HELP:
         print_usage(cfg);
         break;
+    case OP_HELP_1:
+        // TODO: implement
+        if (!strncmp(option->argv[0], "settings", 8))
+            print_settings(cfg);
+        break;
     case OP_VERSION:
         print_version(cfg);
         break;
@@ -168,11 +186,19 @@ void print_config(Config* config)
     );
 }
 
+void print_settings(Config *config)
+{
+    printf("Settings:\n");
+    for (SettingDefinition *sd = config->setting_defs; sd->id != -1; ++sd)
+        printf("\t%s: %s\n", sd->name, "N/I");
+}
+
 void print_version(Config* config)
 {
     printf(
         "%s v%s, compiled on %s\n",
-         YOURTIME_FULL_NAME, YOURTIME_VERSION, YOURTIME_BUILD_TIME);
+         YOURTIME_FULL_NAME, YOURTIME_VERSION,
+         YOURTIME_BUILD_TIMESTAMP);
 }
 
 void print_usage(Config* config)
@@ -210,6 +236,11 @@ void print_usage(Config* config)
         "\t\t'1-', '-9' and '-' are all possible).\n",
         YOURTIME_SHORT_NAME
     );
+
+    if (config->verbosity > 1) {
+        printf("\n");
+        print_config(config);
+    }
 }
 
 int parse_config(char *config_file)

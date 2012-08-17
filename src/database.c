@@ -1,5 +1,5 @@
 /* yourTime
- * 
+ *
  * Database implementation (SQLite based).
  *
  * TODO: complete heared (license, author, etc)
