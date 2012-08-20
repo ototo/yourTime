@@ -14,62 +14,54 @@
 #include "commands.h"
 
 
-/* commands */
-#define CMD_START "start"
-#define CMD_START_LEN (sizeof(CMD_START) - 1)
-#define CMD_STOP "stop"
-#define CMD_STOP_LEN (sizeof(CMD_STOP) - 1)
-#define CMD_SWITCH "switch"
-#define CMD_SWITCH_LEN (sizeof(CMD_SWITCH) - 1)
-
 /* Application config */
 static Config cfg;
 
+#define DEF_SOPT(n,i) .name = n,\
+                      .id = i
+
 ShortOptionDefinition short_options[] = {
     {
-        .name= 'h',
-        .id = OP_HELP,
+        DEF_SOPT('h', OP_HELP),
     },
     {
-        .name = 'v',
-        .id = OP_VERBOSE,
+        DEF_SOPT('v', OP_VERBOSE),
     },
     {
-        .name = 'q',
-        .id = OP_QUIET,
+        DEF_SOPT('q', OP_QUIET),
     },
     {
         .id = -1
     }
 };
 
+#undef DEF_SOPT
+
+#define DEF_LOPT(arg_name, arg_id) .name = arg_name,\
+                                   .length = sizeof(arg_name) - 1,\
+                                   .id = arg_id
+
 LongOptionDefinition long_options[] = {
     {
-        .name = "help",
-        .name_length = 4,
-        .id = OP_HELP_1,
+        DEF_LOPT("help", OP_HELP_1),
         .number_of_args = 1,
     },
     {
-        .name = "version",
-        .name_length = 7,
-        .id = OP_VERSION,
+        DEF_LOPT("version", OP_VERSION),
     },
     {
-        .name = "verbosity",
-        .name_length = 9,
-        .id = OP_VERBOSITY_1,
+        DEF_LOPT("verbosity", OP_VERBOSITY_1),
         .number_of_args = 1,
     },
     {
-        .name = "quiet",
-        .name_length = 5,
-        .id = OP_QUIET,
+        DEF_LOPT("quiet", OP_QUIET),
     },
     {
         .id = -1
     }
 };
+
+#undef DEF_LOPT
 
 /* Setting variables. */
 SettingDefinition settings[] = {
@@ -123,7 +115,7 @@ int main(int argc, char* argv[])
         return res;
     }
 
-    if ((res = process_command(argc - idx_args, &argv[idx_args], &cfg)))
+    if ((res = process_command(&cfg, argc - idx_args, &argv[idx_args])))
     {
         // TODO: improve error reporting
         fprintf(stderr, "Error processing the command!\n");

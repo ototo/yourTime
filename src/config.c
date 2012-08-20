@@ -34,7 +34,7 @@ int parse_options(
     printf("= Long option definitions:\n");
     for (int idx = 0; idx < long_options_count; ++idx)
         printf("\tname: %s (%d)  id: %d  args: %d\n",
-            long_options[idx].name, long_options[idx].name_length,
+            long_options[idx].name, long_options[idx].length,
             long_options[idx].id, long_options[idx].number_of_args);
     printf("\n");
     */
@@ -54,13 +54,13 @@ int parse_options(
                         options[op_idx].longer); */
                     if (!strncmp(long_options[op_idx].name,
                                  &argv[idx][2],
-                                 long_options[op_idx].name_length)) {
+                                 long_options[op_idx].length)) {
 
                         memset(&opt, 0, sizeof(opt));
                         opt.type = OT_LONG;
                         opt.id = long_options[op_idx].id;
                         opt.u.l.name = long_options[op_idx].name;
-                        opt.u.l.length = long_options[op_idx].name_length;
+                        opt.u.l.length = long_options[op_idx].length;
                         if ((opt.argc =
                                 long_options[op_idx].number_of_args)) {
                             if (idx >= argc - 1) {
@@ -169,7 +169,11 @@ void process_option(AnyOption* option, Config* cfg)
             cfg->verbosity += 1;
         break;
     case OP_VERBOSITY_1:
-        cfg->verbosity = atoi(option->argv[0]);
+        {
+            int val = atoi(option->argv[0]);
+            cfg->verbosity = val ? val < (1 << VERBOSITY_BITS)
+                                 : (1 << VERBOSITY_BITS) - 1;
+        }
         break;
     case OP_QUIET:
         cfg->verbosity = 0;

@@ -19,13 +19,13 @@ clean:
 	rm -f yt
 
 # dependency tree
-main.o: main.c config.h database.h
+main.o: main.c config.h database.h commands.h
 config.h: version.h
 config.o: config.c config.h
 database.h: config.h
 database.o: database.c database.h
 commands.h: config.h
-commands.c: commands.h
+commands.c: commands.h config.h
 # end
 
 $(EXECUTABLE): $(OBJECTS) 

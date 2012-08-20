@@ -74,7 +74,7 @@ struct _ShortOptionDefinition
 struct _LongOptionDefinition
 {
     char        *name;
-    int         name_length;
+    int         length;
     OptionId    id;
     int         number_of_args  : 2;
     char        *help;
