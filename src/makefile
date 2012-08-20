@@ -7,7 +7,7 @@ SOURCES=\
     database.c \
     commands.c
 OBJECTS=$(SOURCES:.c=.o)
-LIBS=-lsqlite
+LIBS=-lsqlite3
 EXECUTABLE=yt
 
 .PHONY : clean all

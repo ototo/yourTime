@@ -47,6 +47,7 @@ typedef struct _Config {
     SettingDefinition   *setting_defs;
     unsigned int        verbosity   : VERBOSITY_BITS;
     char                config_file[_PC_PATH_MAX];
+    char                database_file[_PC_PATH_MAX];
 } Config;
 
 /* Option definitions */
