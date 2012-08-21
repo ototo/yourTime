@@ -18,14 +18,13 @@
  * Represents a change in activities.
  */
 
-struct Event
+struct _Activity
 {
     int             id;
-    time_t          timestamp;
     char            *summary;
 };
 
-typedef struct _Event Event;
+typedef struct _Activity Activity;
 
 
 
@@ -42,9 +41,15 @@ struct _Database {
 
 typedef struct _Database Database;
 
-int db_init(Config *cfg, Database *db);
+int db_init(Database *db, Config *cfg);
 int db_free(Database *db);
-int db_open(Database *db, char *file);
+int db_open(Database *db, int mode);
+int db_is_open(Database *db);
 int db_close(Database *db);
-int db_add_event(Database *db, Event *event);
 
+int db_start_activity(Database *db, Activity **actvs);
+int db_switch_activity(Database *db, int actvc, Activity **actvs);
+int db_stop_activity(Database *db, int actvc, Activity **actvs);
+
+Activity* db_alloc_activity(void);
+void db_free_activity(int actvc, Activity **actvs);

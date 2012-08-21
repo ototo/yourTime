@@ -8,6 +8,7 @@
 #pragma once
 
 #include "config.h"
+#include "database.h"
 
 /* Command IDs */
 enum _CommandId {
@@ -30,7 +31,8 @@ enum _CommandFlag {
 typedef enum _CommandFlag CommandFlag;
 
 
-typedef int (*CommandHandler)(Config *cfg, int argc, char *argv[]);
+typedef int (*CommandHandler)(Config *cfg, Database *db,
+                              int argc, char *argv[]);
 
 struct _CommandDefinition
 {
@@ -44,4 +46,6 @@ struct _CommandDefinition
 
 typedef struct _CommandDefinition CommandDefinition;
 
-int process_command(Config *cfg, int argc, char *argv[]);
+int parse_command(Config *cfg, Database *db, int argc, char *argv[]);
+int process_command(CommandDefinition *cmd, Config *cfg, Database *db,
+                    int argc, char *argv[]);

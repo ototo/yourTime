@@ -16,6 +16,7 @@
 
 /* Application config */
 static Config cfg;
+static Database db;
 
 #define DEF_SOPT(n,i) .name = n,\
                       .id = i
@@ -108,19 +109,27 @@ int main(int argc, char* argv[])
 
     int res;
 
-    if ((res = parse_config("~/.yourTime/config")))
+    if ((res = parse_config(&cfg, "~/.yourTime/config")))
     {
         // TODO: improve error reporting
         fprintf(stderr, "Error parsing the config file!\n");
         return res;
     }
 
-    if ((res = process_command(&cfg, argc - idx_args, &argv[idx_args])))
+    if ((res = db_init(&db, &cfg)))
+    {
+        fprintf(stderr, "Error initializing database: 0x%08X\n", res);
+        return res;
+    }
+
+    if ((res = parse_command(&cfg, &db, argc - idx_args, &argv[idx_args])))
     {
         // TODO: improve error reporting
         fprintf(stderr, "Error processing the command!\n");
         return res;
     }
+
+    db_free(&db);
 
     /*
     printf("Parsed %d options, %d free arguments are present:\n",

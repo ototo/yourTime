@@ -24,7 +24,7 @@ config.h: version.h
 config.o: config.c config.h
 database.h: config.h
 database.o: database.c database.h
-commands.h: config.h
+commands.h: config.h database.h
 commands.c: commands.h config.h
 # end
 

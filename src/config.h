@@ -122,4 +122,4 @@ void print_settings(Config *config);
 void print_version(Config *config);
 void print_usage(Config *config);
 
-int parse_config(char *config_file);
+int parse_config(Config *config, char *config_file);

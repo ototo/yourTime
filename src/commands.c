@@ -9,10 +9,10 @@
 
 #include "commands.h"
 
-static int cmd_status(Config *cfg, int argc, char *argv[]);
-static int cmd_start(Config *cfg, int argc, char *argv[]);
-static int cmd_switch(Config *cfg, int argc, char *argv[]);
-static int cmd_stop(Config *cfg, int argc, char *argv[]);
+static int cmd_status(Config *cfg, Database *db, int argc, char *argv[]);
+static int cmd_start(Config *cfg, Database *db, int argc, char *argv[]);
+static int cmd_switch(Config *cfg, Database *db, int argc, char *argv[]);
+static int cmd_stop(Config *cfg, Database *db, int argc, char *argv[]);
 
 
 /* command list */
@@ -53,7 +53,7 @@ CommandDefinition commands[] = {
 
 #undef DEF_CMD
 
-int process_command(Config *cfg, int argc, char *argv[])
+int parse_command(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 6)
         printf("Entered %s\n", __func__);
@@ -62,13 +62,15 @@ int process_command(Config *cfg, int argc, char *argv[])
             printf("%s - trying %s\n", __func__, cd->name);
         if (!argc) {
             if (cd->flags & CMDF_DEFAULT)
-                return cd->handler(cfg, argc - 1, argv + 1);
+                return process_command(cd, cfg, db, argc - 1,
+                                       argv + 1);
         }
         else if (!strncmp(argv[0], cd->name, cd->length)) {
             assert(cd->handler);
             if (cfg->verbosity > 5)
                 printf("%s - calling handler for %s\n", __func__, cd->name);
-            return cd->handler(cfg, argc - 1, argv + 1);
+            return process_command(cd, cfg, db, argc - 1,
+                                   argv + 1);
         }
     }
     if (argc)
@@ -79,9 +81,27 @@ int process_command(Config *cfg, int argc, char *argv[])
     return -1;
 }
 
+
+int process_command(CommandDefinition *cmd, Config *cfg, Database *db,
+                    int argc, char *argv[])
+{
+    int rc;
+
+    /* TODO: make sure that db is opened the right way. */
+    if (!db_is_open(db)) {
+        if (cfg->verbosity > 5)
+            printf("%s - opening DB at %s\n", __func__, db->file_name);
+        if ((rc = db_open(db, SQLITE_OPEN_CREATE |
+                                SQLITE_OPEN_READWRITE)))
+            return rc;
+    }
+
+    return cmd->handler(cfg, db, argc, argv);
+}
+
 /* handlers */
 
-static int cmd_status(Config *cfg, int argc, char *argv[])
+static int cmd_status(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
@@ -89,7 +109,7 @@ static int cmd_status(Config *cfg, int argc, char *argv[])
     return 0;
 }
 
-static int cmd_start(Config *cfg, int argc, char *argv[])
+static int cmd_start(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
@@ -97,7 +117,7 @@ static int cmd_start(Config *cfg, int argc, char *argv[])
     return 0;
 }
 
-static int cmd_switch(Config *cfg, int argc, char *argv[])
+static int cmd_switch(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
@@ -105,7 +125,7 @@ static int cmd_switch(Config *cfg, int argc, char *argv[])
     return 0;
 }
 
-static int cmd_stop(Config *cfg, int argc, char *argv[])
+static int cmd_stop(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 5)
         printf("Entered %s", __func__);
