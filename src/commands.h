@@ -1,5 +1,5 @@
 /* yourTime
- * 
+ *
  * Command implementation.
  *
  * TODO: complete header (license, author, etc)

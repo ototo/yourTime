@@ -1,10 +1,11 @@
 /* yourTime
- * 
+ *
  * Command implementation.
  *
  * TODO: complete header (license, author, etc)
  */
 
+#include <string.h>
 #include <assert.h>
 
 #include "commands.h"
@@ -114,7 +115,40 @@ static int cmd_start(Config *cfg, Database *db, int argc, char *argv[])
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
     assert(cfg);
-    return 0;
+
+    int rc;
+    Activity **actvs;
+
+    rc = db_alloc_activities(1, &actvs);
+    if (rc)
+        return rc;
+
+    int len = 0;
+    for (int idx = 0; idx < argc; ++idx)
+        len += strlen(argv[idx]);
+    len += argc;
+
+    char *summary;
+    rc = db_alloc_string(len, &summary);
+    if (rc)
+        goto cleanup_db;
+
+    for (int idx = 0; idx < argc; ++idx) {
+        if (idx)
+            strcat(summary, " ");
+        strcat(summary, argv[idx]);
+    }
+
+    actvs[0]->summary = summary;
+
+    rc = db_start_activity(db, 1, actvs);
+
+    free(summary);
+
+cleanup_db:
+    db_free_activities(&actvs);
+
+    return rc;
 }
 
 static int cmd_switch(Config *cfg, Database *db, int argc, char *argv[])
