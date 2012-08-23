@@ -6,6 +6,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <error.h>
 #include <assert.h>
 #include <sqlite.h>
@@ -198,7 +199,44 @@ int db_free_string(char **str)
     return 0;
 }
 
-int db_alloc_buffer(int page, Buffer **buffer)
+static
+int db_add_buffer_pages(Buffer **buffer, int pages,
+                        int last_page_offset, int zero_data)
+{
+    assert(buffer);
+
+    if (!*buffer)
+        return -1; /* TODO: error code */
+
+    Buffer *buf = *buffer;
+    if (!buf->page_size) {
+        fprintf(stderr,
+                "%s - zero page size is a nonsense!\n", __func__);
+        return -1; // TODO: error code
+    }
+
+    int page_size = buf->page_size;
+
+    for (int page_nr = 0; page_nr < pages; ++page_nr) {
+        BufferPage *page = malloc(sizeof(BufferPage) + page_size);
+        if (!page)
+            return -1; // TODO: error code
+
+        memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
+
+        if (!buf->head)
+            buf->tail = page;
+        else
+            buf->head->next = page;
+        buf->pages += 1;
+        buf->size += buf->page_size;
+        buf->head = page;
+    }
+
+    return 0;
+}
+
+int db_alloc_buffer(int page_size, Buffer **buffer)
 {
     Buffer *buf;
 
@@ -206,20 +244,15 @@ int db_alloc_buffer(int page, Buffer **buffer)
     if (!buf)
         return -1; /* TODO: error code */
 
-    buf->head = buf->tail = (BufferPage *)malloc(sizeof(BufferPage) +
-                                                    page);
-    if (!buf->head) {
+    memset(buf, 0, sizeof(Buffer));
+
+    buf->page_size = page_size;
+
+    int rc = db_add_buffer_pages(&buf, 1, 0, 0);
+    if (rc) {
         free(buf);
-        return -1;
+        return rc; // TODO: report error
     }
-
-    buf->page_size = page;
-    buf->size = page;
-    buf->used = 0;
-
-    buf->head->tip = buf->head->data;
-    buf->head->next = NULL;
-    buf->head->free = page;
 
     *buffer = buf;
 
@@ -236,49 +269,23 @@ int db_append_buffer(Buffer **buffer, char *string, int size)
     if (!string)
         return 0;
 
-    int left = size ? size > 0 : strlen(string);
-    char *to_add = string;
-    int available = (*buffer)->head->free;
-
-    while (left) {
-        if (available > 0) {
-            int chop_size = available < left ? available : left;
-            memcpy((*buffer)->head->tip, to_add, chop_size);
-            to_add += chop_size;
-            (*buffer)->head->tip += chop_size;
-            (*buffer)->head->free -= chop_size;
-            (*buffer)->used += chop_size;
-            left -= chop_size;
-        }
-
-        if (left) {
-            int page_size = (*buffer)->page_size;
-            BufferPage *page = malloc(sizeof(BufferPage) + page_size);
-            if (!page)
-                return -1; // TODO: error code
-
-            memset(page, 0, sizeof(BufferPage) + 1);
-            page->free = page_size;
-            page->tip = page->data;
-
-            (*buffer)->head->next = page;
-            (*buffer)->size += (*buffer)->page_size;
-            (*buffer)->head = page;
-        }
-
-        available = (*buffer)->head->free;
-    }
-
     return 0;
 }
 
 int db_buffer_get_as_string(Buffer **buffer, char **string)
 {
+    assert(buffer);
+
     return 0;
 }
 
 int db_buffer_trim(Buffer **buffer, int new_size)
 {
+    assert(*buffer);
+
+    if (!*buffer)
+        return -1; // TODO: error code
+
     return 0;
 }
 

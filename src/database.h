@@ -32,19 +32,19 @@ typedef struct _BufferPage BufferPage;
 
 struct _BufferPage
 {
-    int         free;       /* bytes free in the page */
-    char        *tip;       /* next free byte */
     BufferPage  *next;      /* next page */
     char        data[];     /* data buffer itself */
 };
 
 struct _Buffer
 {
-    int         page_size;  /* page size */
-    int         size;       /* allocated total size (all pages) */
-    BufferPage  *head;      /* most recently added page */
-    BufferPage  *tail;      /* the oldest page */
-    int         used;       /* total used size */
+    int         page_size;          /* page size */
+    int         pages;              /* number of allocated pages */
+    int         size;               /* allocated total size (all pages) */
+    int         used;               /* total used size */
+    int         head_page_offset;   /* to the first unused byte */
+    BufferPage  *head;              /* most recently added page */
+    BufferPage  *tail;              /* the oldest page */
 };
 
 typedef struct _Buffer Buffer;
