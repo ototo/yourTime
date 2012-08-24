@@ -199,9 +199,51 @@ int db_free_string(char **str)
     return 0;
 }
 
+#define BUF_SEEK_PAGE_OFFSET 0
+#define BUF_SEEK_BUFFER_OFFSET 1
+
+int db_seek_buffer(Buffer *buffer, int seek_type,
+                   int seek_offset, int *seek_page,
+                   BufferPage **page, int *page_offset)
+{
+    assert(buffer);
+
+    int target_page;
+    int offset;
+
+    switch (seek_type)
+    {
+    case BUF_SEEK_PAGE_OFFSET:
+        target_page = *seek_page;
+        offset = seek_offset;
+        break;
+    case BUF_SEEK_BUFFER_OFFSET:
+        {
+        div_t q = div(seek_offset, buffer->page_size);
+        target_page = q.quot;
+        offset = q.rem;
+        }
+        break;
+    }
+
+    BufferPage *p = buffer->tail;
+    int idx;
+
+    for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
+
+    if (idx != target_page)
+        return -1; // TODO: return code - out of bounds
+
+    *seek_page = target_page;
+    *page = p;
+    *page_offset = offset;
+
+    return 0;
+}
+
 static
 int db_add_buffer_pages(Buffer **buffer, int pages,
-                        int last_page_offset, int zero_data)
+                        int used, int zero_data)
 {
     assert(buffer);
 
@@ -232,6 +274,7 @@ int db_add_buffer_pages(Buffer **buffer, int pages,
         buf->size += buf->page_size;
         buf->head = page;
     }
+    // TODO: set used
 
     return 0;
 }
@@ -266,8 +309,34 @@ int db_append_buffer(Buffer **buffer, char *string, int size)
     if (!*buffer)
         return -1; /* TODO: error code */
 
-    if (!string)
+    if (!string || !size)
         return 0;
+
+    Buffer *buf = *buffer;
+    int string_len = strlen(string);
+    int left_to_append = (size > 0)
+                       ? ((size < string_len) ? size : string_len)
+                       : string_len;
+    char *chars_to_append = string;
+
+    while (left_to_append) {
+        BufferPage *head = buf->head;
+        if (!head || (buf->tip_page_used == buf->page_size)) {
+            db_add_buffer_pages(buffer, 1, -1, 0);
+            continue;
+        }
+        else {
+            int available = buf->page_size - buf->tip_page_used;
+            int to_copy = (available < left_to_append)
+                        ? available
+                        : left_to_append;
+            memcpy(head->data, chars_to_append, to_copy);
+            left_to_append -= to_copy;
+            chars_to_append += to_copy;
+            buf->tip_page_used += to_copy;
+            buf->used += to_copy;
+        }
+    }
 
     return 0;
 }

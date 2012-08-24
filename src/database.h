@@ -42,9 +42,12 @@ struct _Buffer
     int         pages;              /* number of allocated pages */
     int         size;               /* allocated total size (all pages) */
     int         used;               /* total used size */
-    int         head_page_offset;   /* to the first unused byte */
+    int         tip_page_used;      /* used on the tip page */
+    int         tip_page_offset;    /* to the first unused byte */
     BufferPage  *head;              /* most recently added page */
     BufferPage  *tail;              /* the oldest page */
+    BufferPage  *tip;               /* the page containing the next free
+                                       byte */
 };
 
 typedef struct _Buffer Buffer;
