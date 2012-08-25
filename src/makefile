@@ -5,7 +5,8 @@ SOURCES=\
     main.c \
     config.c \
     database.c \
-    commands.c
+    commands.c \
+    buffer.c
 OBJECTS=$(SOURCES:.c=.o)
 LIBS=-lsqlite3
 EXECUTABLE=yt
@@ -22,10 +23,12 @@ clean:
 main.o: main.c config.h database.h commands.h
 config.h: version.h
 config.o: config.c config.h
-database.h: config.h
+database.h: config.h buffer.h
 database.o: database.c database.h
 commands.h: config.h database.h
 commands.c: commands.h config.h
+buffer.h: config.h
+buffer.c: buffer.h
 # end
 
 $(EXECUTABLE): $(OBJECTS) 

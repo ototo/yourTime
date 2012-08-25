@@ -107,26 +107,26 @@ int main(int argc, char* argv[])
     if (cfg.verbosity > 4)
         print_version(&cfg);
 
-    int res;
+    int rc;
 
-    if ((res = parse_config(&cfg, "~/.yourTime/config")))
+    if ((rc = parse_config(&cfg, "~/.yourTime/config")))
     {
         // TODO: improve error reporting
         fprintf(stderr, "Error parsing the config file!\n");
-        return res;
+        return rc;
     }
 
-    if ((res = db_init(&db, &cfg)))
+    if ((rc = db_init(&db, &cfg)))
     {
-        fprintf(stderr, "Error initializing database: 0x%08X\n", res);
-        return res;
+        fprintf(stderr, "Error initializing database: 0x%08X\n", rc);
+        return rc;
     }
 
-    if ((res = parse_command(&cfg, &db, argc - idx_args, &argv[idx_args])))
+    if ((rc = parse_command(&cfg, &db, argc - idx_args, &argv[idx_args])))
     {
         // TODO: improve error reporting
         fprintf(stderr, "Error processing the command!\n");
-        return res;
+        return rc;
     }
 
     db_free(&db);
@@ -140,5 +140,5 @@ int main(int argc, char* argv[])
     printf("\n");
     */
 
-    return 0;
+    return rc;
 }
