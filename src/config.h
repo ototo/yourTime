@@ -42,14 +42,6 @@ struct _SettingDefinition {
 typedef struct _SettingDefinition SettingDefinition;
 
 
-/* In-memory configuration for the program. */
-typedef struct _Config {
-    SettingDefinition   *setting_defs;
-    unsigned int        verbosity   : VERBOSITY_BITS;
-    char                config_file[_PC_PATH_MAX];
-    char                database_file[_PC_PATH_MAX];
-} Config;
-
 /* Option definitions */
 
 enum _OptionId {
@@ -108,14 +100,66 @@ struct _AnyOption {
 
 typedef struct _AnyOption AnyOption;
 
+/* In-memory configuration for the program. */
+struct _Config
+{
+    ShortOptionDefinition   *short_option_defs;
+    LongOptionDefinition    *long_option_defs;
+    SettingDefinition       *setting_defs;
+    unsigned int            verbosity   : VERBOSITY_BITS;
+    char                    config_file[_PC_PATH_MAX];
+    char                    database_file[_PC_PATH_MAX];
+};
+
+typedef struct _Config Config;
+
 typedef void (*OptionProcessor)(AnyOption *option, Config *config);
 
 
-/* forward declarations */
-int parse_options(int argc, char *argv[],
-                  const ShortOptionDefinition *short_options,
-                  const LongOptionDefinition *long_options,
-                  OptionProcessor processor, Config *config);
+/* Initialize configuration.
+ *
+ * Initializes configuration structure, sets defaults.
+ *
+ * Parameters:
+ *   @config        configuration structure to initialize;
+ *   @short_options list of short option definitions, terminated by an
+ *                  entry with .id = -1;
+ *   @long_options  list of long option definitions, terminated by an
+ *                  entry with .id = -1;
+ *   @settings      list of setting definitions, terminated by an entry
+ *                  with .id = -1.
+ *
+ * Returns:
+ *   YTE_OK             on success;
+ *   TODO: complete
+ */
+
+int config_init(Config *config, ShortOptionDefinition *short_options,
+                LongOptionDefinition *long_options,
+                SettingDefinition *settings);
+
+/* Parse command line options.
+ *
+ * Traverses the list of prpgram arguments and processes arguments
+ * according to their definitions.
+ *
+ * Parameters:
+ *   @argc          number of arguments to parse;
+ *   @argv          argument array;
+ *   @short_options list opf short option definitions;
+ *   @long_options  list of long option definitions;
+ *   @processor     callback for option processor;
+ *   @config        configuration to update.
+ *
+ * Returns:
+ *   YTE_OK             on success;
+ *   YTE_ARGUMENTS      on invalid arguments;
+ *   TODO: complete
+ */
+
+int config_parse_options(int argc, char *argv[],
+                         OptionProcessor processor, Config *config);
+
 void process_option(AnyOption *option, Config *cfg);
 void print_config(Config *config);
 void print_settings(Config *config);

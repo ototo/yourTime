@@ -91,13 +91,13 @@ SettingDefinition settings[] = {
 
 int main(int argc, char* argv[])
 {
-    memset(&cfg, 0, sizeof(cfg));
-    cfg.setting_defs = settings;
-    cfg.verbosity = DEFAULT_VERBOSITY;
+    int rc = config_init(&cfg, short_options, long_options, settings);
+    if (rc)
+        return rc;
+
     int idx_args = -1;
-    if ((idx_args =  parse_options(argc, argv,
-                                   short_options, long_options,
-                                   process_option, &cfg)) < 0)
+    if ((idx_args = config_parse_options(argc, argv,
+                                         process_option, &cfg)) < 0)
     {
         fprintf(stderr, "Error parsing arguments!\n");
         // TODO: improve error reporting
@@ -106,8 +106,6 @@ int main(int argc, char* argv[])
 
     if (cfg.verbosity > 4)
         print_version(&cfg);
-
-    int rc;
 
     if ((rc = parse_config(&cfg, "~/.yourTime/config")))
     {

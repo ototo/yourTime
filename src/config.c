@@ -9,18 +9,31 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "version.h"
 #include "config.h"
 
 
+int config_init(Config *config, ShortOptionDefinition *short_options,
+                LongOptionDefinition *long_options,
+                SettingDefinition *settings)
+{
+    assert(config);
+    memset(config, 0, sizeof(*config));
+    config->short_option_defs = short_options;
+    config->long_option_defs = long_options;
+    config->setting_defs = settings;
+    config->verbosity = DEFAULT_VERBOSITY;
+
+    return 0; // TODO: result code
+}
+
+
 /* Go through the command line arguments, update configuration
  * accordingly, return an index of the first non-option argument */
-int parse_options(
-        int argc, char* argv[],
-        const ShortOptionDefinition* short_options,
-        const LongOptionDefinition* long_options,
-        OptionProcessor processor, Config *config)
+int config_parse_options(int argc, char* argv[],
+                         OptionProcessor processor, Config *config)
 {
     AnyOption opt;
 
@@ -38,6 +51,8 @@ int parse_options(
             long_options[idx].id, long_options[idx].number_of_args);
     printf("\n");
     */
+
+    LongOptionDefinition *long_options = config->long_option_defs;
 
     for (int idx = 1; idx < argc; ++idx ) {
         /* printf("* parsing option %d...\n", idx); */
@@ -88,6 +103,8 @@ int parse_options(
                 }
             }
             else {
+                ShortOptionDefinition *short_options =
+                                                config->short_option_defs;
                 /* single-dash option - a shorter one */
                 for (char* ptr = &argv[idx][1]; *ptr; ++ptr) {
                     /* printf("- parsing symbol at %d ('%c')...\n",
