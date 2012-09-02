@@ -46,6 +46,6 @@ struct _CommandDefinition
 
 typedef struct _CommandDefinition CommandDefinition;
 
-int parse_command(Config *cfg, Database *db, int argc, char *argv[]);
-int process_command(CommandDefinition *cmd, Config *cfg, Database *db,
+int command_process_args(Config *cfg, Database *db, int argc, char *argv[]);
+int command_process(CommandDefinition *cmd, Config *cfg, Database *db,
                     int argc, char *argv[]);

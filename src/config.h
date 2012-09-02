@@ -14,77 +14,107 @@
 
 #include "version.h"
 
-#define DEFAULT_VERBOSITY 1
-#define DEFAULT_CONFIG_FILE "~/.yourTube/config"
-#define DEFAULT_DATABASE_FILE "~/.yourTime/yourTime.sqlite"
+#define CFG_USER_NAME_LENGTH        256
+#define CFG_USER_EMAIL_LENGTH       256
+#define CFG_DEFAULT_VERBOSITY       1
+#define CFG_DEFAULT_CONFIG_FILE     "~/.yourTube/config"
+#define CFG_DEFAULT_DATABASE_FILE   "~/.yourTime/yourTime.sqlite"
+#define CFG_BUFFER_SIZE             512
 
 #define VERBOSITY_BITS 3
 
 
 /* Configuration setting definition structure */
 
-enum _SettingId {
+enum _OptionId {
     ST_CONFIG_FILE = 0,
     ST_DATABASE_FILE,
     ST_LOG_FILE,
+    ST_USER_NAME,
+    ST_USER_EMAIL,
 };
 
-typedef enum _SettingId SettingId;
+typedef enum _OptionId OptionId;
 
-struct _SettingDefinition {
-    SettingId   id;
+struct _OptionDefinition {
+    OptionId    id;
     char        *name;
     char        *def_value;
     int         offset;
     char        *description;
 };
 
-typedef struct _SettingDefinition SettingDefinition;
+typedef struct _OptionDefinition OptionDefinition;
+
+#define field_offset(type, field) \
+    (int)(&(((type*)0)->field))
 
 
-/* Option definitions */
+/* Switch definitions */
 
-enum _OptionId {
+enum _SwitchId {
     OP_HELP = 0,
     OP_HELP_1,
     OP_VERSION,
     OP_VERBOSE,
     OP_VERBOSITY_1,
-    OP_QUIET
+    OP_QUIET,
+    OP_SET_OPTION,
 };
 
-typedef enum _OptionId OptionId;
+/* switch argument number stuff */
+#define ARGS_FROM_MASK          0x000000FF
+#define ARGS_TO_MASK            0x0000FF00
+#define ARGS_SET_FROM(num)      (num & ARGS_FROM_MASK)
+#define ARGS_FROM(args)         (args & ARGS_FROM_MASK)
+#define ARGS_SET_TO(num)        ((num & ARGS_TO_MASK) << 8)
+#define ARGS_TO(num)            ((num & ARGS_TO_MASK) >> 8)
+#define ARGS_SET_EXACTLY(num)   ARGS_FROM(num) | ARGS_TO(num)
+#define ARGS_SET_NONE           0x00000000
+#define ARGS_SET_OPTIONAL       0x000000FF
+#define ARGS_SET_ALL            0x0000FF00
 
-struct _ShortOptionDefinition
+typedef enum _SwitchId SwitchId;
+
+struct _ShortSwitchDefinition
 {
     char        name;
-    OptionId    id;
-    int         number_of_args  : 2;
-    char        *help;
+    SwitchId    id;
+    int         args;
+    char        *description;
 };
 
-struct _LongOptionDefinition
+#define DEFINE_SHORT_SWITCH(n,i) \
+    .name = n,\
+    .id = i
+
+struct _LongSwitchDefinition
 {
     char        *name;
     int         length;
-    OptionId    id;
-    int         number_of_args  : 2;
-    char        *help;
+    SwitchId    id;
+    int         args;
+    char        *description;
 };
 
-typedef struct _ShortOptionDefinition ShortOptionDefinition;
-typedef struct _LongOptionDefinition LongOptionDefinition;
+#define DEFINE_LONG_SWITCH(arg_name, arg_id) \
+    .name = arg_name,\
+    .length = sizeof(arg_name) - 1,\
+    .id = arg_id
 
-enum _OptionType {
+typedef struct _ShortSwitchDefinition ShortSwitchDefinition;
+typedef struct _LongSwitchDefinition LongSwitchDefinition;
+
+enum _SwitchType {
     OT_SHORT = 0,
     OT_LONG,
 };
 
-typedef enum _OptionType OptionType;
+typedef enum _SwitchType SwitchType;
 
-struct _AnyOption {
-    OptionType  type;
-    OptionId    id;
+struct _AnySwitch {
+    SwitchType  type;
+    SwitchId    id;
     char        *argv[4];
     int         argc;
     union {
@@ -98,22 +128,26 @@ struct _AnyOption {
     } u;
 };
 
-typedef struct _AnyOption AnyOption;
+typedef struct _AnySwitch AnySwitch;
 
 /* In-memory configuration for the program. */
 struct _Config
 {
-    ShortOptionDefinition   *short_option_defs;
-    LongOptionDefinition    *long_option_defs;
-    SettingDefinition       *setting_defs;
+    ShortSwitchDefinition   *short_switch_defs;
+    LongSwitchDefinition    *long_switch_defs;
+    OptionDefinition        *option_defs;
+
+    /* variables */
     unsigned int            verbosity   : VERBOSITY_BITS;
     char                    config_file[_PC_PATH_MAX];
     char                    database_file[_PC_PATH_MAX];
+    char                    user_name[CFG_USER_NAME_LENGTH];
+    char                    user_email[CFG_USER_EMAIL_LENGTH];
 };
 
 typedef struct _Config Config;
 
-typedef void (*OptionProcessor)(AnyOption *option, Config *config);
+typedef void (*SwitchProcessor)(AnySwitch *option, Config *config);
 
 
 /* Initialize configuration.
@@ -134,36 +168,37 @@ typedef void (*OptionProcessor)(AnyOption *option, Config *config);
  *   TODO: complete
  */
 
-int config_init(Config *config, ShortOptionDefinition *short_options,
-                LongOptionDefinition *long_options,
-                SettingDefinition *settings);
+int config_init(Config *config, ShortSwitchDefinition *short_switches,
+                LongSwitchDefinition *long_switches,
+                OptionDefinition *options);
 
-/* Parse command line options.
+
+/* Process configuration and command line.
  *
- * Traverses the list of prpgram arguments and processes arguments
- * according to their definitions.
+ * Configure application for the run time by:
+ *   1. processing default configuration file (if present);
+ *   2. processing command line arguments in the order of their
+ *      occurence.
  *
  * Parameters:
- *   @argc          number of arguments to parse;
- *   @argv          argument array;
- *   @short_options list opf short option definitions;
- *   @long_options  list of long option definitions;
- *   @processor     callback for option processor;
- *   @config        configuration to update.
+ *   @config        [in/out] config structure to work on;
+ *   @argc          [in] number of arguments in argv;
+ *   @argv          [in] command line arguments to process;
+ *   @processor     [in] a callback to process options found;
+ *   @free_args     [out] index of the first free argument.
  *
  * Returns:
  *   YTE_OK             on success;
- *   YTE_ARGUMENTS      on invalid arguments;
  *   TODO: complete
  */
 
-int config_parse_options(int argc, char *argv[],
-                         OptionProcessor processor, Config *config);
+int config_process_args(Config *config, int argc, char *argv[],
+                        SwitchProcessor processor, int *free_args);
 
-void process_option(AnyOption *option, Config *cfg);
+void process_switch(AnySwitch *aswitch, Config *cfg);
 void print_config(Config *config);
-void print_settings(Config *config);
+void print_options(Config *config);
 void print_version(Config *config);
 void print_usage(Config *config);
 
-int parse_config(Config *config, char *config_file);
+int parse_config_file(Config *config, char *config_file);

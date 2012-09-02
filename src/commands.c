@@ -54,7 +54,7 @@ CommandDefinition commands[] = {
 
 #undef DEF_CMD
 
-int parse_command(Config *cfg, Database *db, int argc, char *argv[])
+int command_process_args(Config *cfg, Database *db, int argc, char *argv[])
 {
     if (cfg->verbosity > 6)
         printf("Entered %s\n", __func__);
@@ -63,14 +63,14 @@ int parse_command(Config *cfg, Database *db, int argc, char *argv[])
             printf("%s - trying %s\n", __func__, cd->name);
         if (!argc) {
             if (cd->flags & CMDF_DEFAULT)
-                return process_command(cd, cfg, db, argc - 1,
+                return command_process(cd, cfg, db, argc - 1,
                                        argv + 1);
         }
         else if (!strncmp(argv[0], cd->name, cd->length)) {
             assert(cd->handler);
             if (cfg->verbosity > 5)
                 printf("%s - calling handler for %s\n", __func__, cd->name);
-            return process_command(cd, cfg, db, argc - 1,
+            return command_process(cd, cfg, db, argc - 1,
                                    argv + 1);
         }
     }
@@ -83,7 +83,7 @@ int parse_command(Config *cfg, Database *db, int argc, char *argv[])
 }
 
 
-int process_command(CommandDefinition *cmd, Config *cfg, Database *db,
+int command_process(CommandDefinition *cmd, Config *cfg, Database *db,
                     int argc, char *argv[])
 {
     int rc;

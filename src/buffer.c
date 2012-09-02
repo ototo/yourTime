@@ -49,12 +49,18 @@ int buffer_seek(Buffer *buffer, int seek_mode,
         target_page = *seek_page;
         offset = seek_offset;
         break;
+    case BUF_SEEK_PAGE_REL_OFFSET:
+        // TODO: implement
+        break;
     case BUF_SEEK_BUFFER_OFFSET:
         {
             div_t q = div(seek_offset, buffer->page_size);
             target_page = q.quot;
             offset = q.rem;
         }
+        break;
+    case BUF_SEEK_BUFFER_REL_OFFSET:
+        // TODO: implement
         break;
     }
 

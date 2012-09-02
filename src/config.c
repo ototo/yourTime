@@ -13,38 +13,46 @@
 
 #include "version.h"
 #include "config.h"
+#include "buffer.h"
 
 
-int config_init(Config *config, ShortOptionDefinition *short_options,
-                LongOptionDefinition *long_options,
-                SettingDefinition *settings)
+int config_init(Config *config, ShortSwitchDefinition *short_switches,
+                LongSwitchDefinition *long_switches,
+                OptionDefinition *options)
 {
     assert(config);
+
     memset(config, 0, sizeof(*config));
-    config->short_option_defs = short_options;
-    config->long_option_defs = long_options;
-    config->setting_defs = settings;
-    config->verbosity = DEFAULT_VERBOSITY;
+    config->short_switch_defs = short_switches;
+    config->long_switch_defs = long_switches;
+    config->option_defs = options;
+
+    /* set defaults */
+    config->verbosity = CFG_DEFAULT_VERBOSITY;
+    // TODO: set config file
+    // TODO: set database file
+    // TODO: set user name
+    // TODO: set user e-mail
 
     return 0; // TODO: result code
 }
 
 
-/* Go through the command line arguments, update configuration
- * accordingly, return an index of the first non-option argument */
-int config_parse_options(int argc, char* argv[],
-                         OptionProcessor processor, Config *config)
+int config_process_args(Config *config, int argc, char* argv[],
+                        SwitchProcessor processor, int *free_args)
 {
-    AnyOption opt;
+    assert(config);
 
-    /* print option definitions */
-    /* printf("= Short option definitions:\n");
+    AnySwitch aswitch;
+
+    /* print switch definitions */
+    /* printf("= Short switch definitions:\n");
     for (int idx = 0; idx < short_options_count; ++idx)
         printf("\tname: %c  id: %d  args: %d\n",
-            short_options[idx].name, short_options[idx].id,
-            short_options[idx].number_of_args);
+            short_switches[idx].name, short_switches[idx].id,
+            short_switches[idx].args);
 
-    printf("= Long option definitions:\n");
+    printf("= Long switch definitions:\n");
     for (int idx = 0; idx < long_options_count; ++idx)
         printf("\tname: %s (%d)  id: %d  args: %d\n",
             long_options[idx].name, long_options[idx].length,
@@ -52,7 +60,7 @@ int config_parse_options(int argc, char* argv[],
     printf("\n");
     */
 
-    LongOptionDefinition *long_options = config->long_option_defs;
+    LongSwitchDefinition *long_switches = config->long_switch_defs;
 
     for (int idx = 1; idx < argc; ++idx ) {
         /* printf("* parsing option %d...\n", idx); */
@@ -63,81 +71,83 @@ int config_parse_options(int argc, char* argv[],
                     return idx + 1;
 
                 /* double-dash option - a longer one */
-                for (int op_idx = 0; long_options[op_idx].id != -1; ++op_idx)
+                for (int sw_idx = 0; long_switches[sw_idx].id != -1;
+                                                                ++sw_idx)
                 {
                     /* printf(". checking longer option '%s'...\n",
-                        options[op_idx].longer); */
-                    if (!strncmp(long_options[op_idx].name,
+                        options[sw_idx].longer); */
+                    if (!strncmp(long_switches[sw_idx].name,
                                  &argv[idx][2],
-                                 long_options[op_idx].length)) {
+                                 long_switches[sw_idx].length)) {
 
-                        memset(&opt, 0, sizeof(opt));
-                        opt.type = OT_LONG;
-                        opt.id = long_options[op_idx].id;
-                        opt.u.l.name = long_options[op_idx].name;
-                        opt.u.l.length = long_options[op_idx].length;
-                        if ((opt.argc =
-                                long_options[op_idx].number_of_args)) {
+                        memset(&aswitch, 0, sizeof(aswitch));
+                        aswitch.type = OT_LONG;
+                        aswitch.id = long_switches[sw_idx].id;
+                        aswitch.u.l.name = long_switches[sw_idx].name;
+                        aswitch.u.l.length = long_switches[sw_idx].length;
+                        if ((aswitch.argc =
+                                long_switches[sw_idx].args)) {
                             if (idx >= argc - 1) {
                                 fprintf(stderr,
-                                        "Option '--%s' requires %d "
+                                        "Switch '--%s' requires %d "
                                         "argument%s", &argv[idx][2],
-                                        opt.argc, (opt.argc % 10 == 1)
-                                                    ? "s" : "");
+                                        aswitch.argc,
+                                        (aswitch.argc % 10 == 1)
+                                                      ? "s" : "");
                                 return argc;
                             }
-                            for (int i = 0; i < opt.argc; ++i)
-                                opt.argv[i] = argv[idx + i + 1];
+                            for (int i = 0; i < aswitch.argc; ++i)
+                                aswitch.argv[i] = argv[idx + i + 1];
                         }
 
-                        processor(&opt, config);
+                        processor(&aswitch, config);
 
-                        idx += opt.argc;
+                        idx += aswitch.argc;
 
                         /*printf("+ found long option '%s' (%d args)\n",
-                                long_options[op_idx].name,
-                                long_options[op_idx].number_of_args);
+                                long_options[sw_idx].name,
+                                long_options[sw_idx].number_of_args);
                         */
                         break;
                     }
                 }
             }
             else {
-                ShortOptionDefinition *short_options =
-                                                config->short_option_defs;
-                /* single-dash option - a shorter one */
+                ShortSwitchDefinition *short_switches =
+                                                config->short_switch_defs;
+                /* single-dash switch - a shorter one */
                 for (char* ptr = &argv[idx][1]; *ptr; ++ptr) {
                     /* printf("- parsing symbol at %d ('%c')...\n",
                         ptr - &argv[idx][1], *ptr); */
-                    int op_idx;
-                    for (op_idx = 0; short_options[op_idx].id != -1 ;
-                            ++op_idx) {
+                    int sw_idx;
+                    for (sw_idx = 0; short_switches[sw_idx].id != -1 ;
+                            ++sw_idx) {
                         /* printf(". checking shorter option '%c'...\n",
-                            options[op_idx].shorter); */
-                        if (*ptr == short_options[op_idx].name) {
+                            options[sw_idx].shorter); */
+                        if (*ptr == short_switches[sw_idx].name) {
 
-                            memset(&opt, 0, sizeof(opt));
-                            opt.type = OT_SHORT;
-                            opt.id = short_options[op_idx].id;
-                            opt.u.s.name = short_options[op_idx].name;
-                            if ((opt.argc =
-                                    short_options[op_idx].number_of_args))
+                            memset(&aswitch, 0, sizeof(aswitch));
+                            aswitch.type = OT_SHORT;
+                            aswitch.id = short_switches[sw_idx].id;
+                            aswitch.u.s.name = short_switches[sw_idx].name;
+                            if ((aswitch.argc =
+                                    short_switches[sw_idx].args))
                                 for (int i = 0; i < 4; ++i)
-                                    opt.argv[i] = argv[idx + i + 1];
+                                    aswitch.argv[i] = argv[idx + i + 1];
 
-                            processor(&opt, config);
+                            processor(&aswitch, config);
 
-                            idx += opt.argc;
+                            idx += aswitch.argc;
 
                             /*
                             printf("+ found short option '%c' (%d args)\n",
-                                    short_options[op_idx].name,
-                                    short_options[op_idx].number_of_args);
+                                    short_options[sw_idx].name,
+                                    short_options[sw_idx].number_of_args);
                             */
                             break;
                         }
                     }
-                    if (short_options[op_idx].id == -1) {
+                    if (short_switches[sw_idx].id == -1) {
                         fprintf(stderr, "Invalid switch '%c' - "
                                         "ignoring.\n", *ptr);
                     }
@@ -152,8 +162,8 @@ int config_parse_options(int argc, char* argv[],
 }
 
 
-/* process an option provided, update the config accordingly */
-void process_option(AnyOption* option, Config* cfg)
+/* process a switch provided, update the config accordingly */
+void process_switch(AnySwitch* aswitch, Config* cfg)
 {
     /*
     if (option->type == OT_SHORT)
@@ -168,15 +178,15 @@ void process_option(AnyOption* option, Config* cfg)
                 option->type, option->id, option->argc);
     */
 
-    switch(option->id)
+    switch(aswitch->id)
     {
     case OP_HELP:
         print_usage(cfg);
         break;
     case OP_HELP_1:
         // TODO: implement
-        if (!strncmp(option->argv[0], "settings", 8))
-            print_settings(cfg);
+        if (!strncmp(aswitch->argv[0], "settings", 8))
+            print_options(cfg);
         break;
     case OP_VERSION:
         print_version(cfg);
@@ -187,13 +197,16 @@ void process_option(AnyOption* option, Config* cfg)
         break;
     case OP_VERBOSITY_1:
         {
-            int val = atoi(option->argv[0]);
+            int val = atoi(aswitch->argv[0]);
             cfg->verbosity = val ? val < (1 << VERBOSITY_BITS)
                                  : (1 << VERBOSITY_BITS) - 1;
         }
         break;
     case OP_QUIET:
         cfg->verbosity = 0;
+        break;
+    case OP_SET_OPTION:
+        //TODO: implement
         break;
     }
 }
@@ -207,11 +220,11 @@ void print_config(Config* config)
     );
 }
 
-void print_settings(Config *config)
+void print_options(Config *config)
 {
-    printf("Settings:\n");
-    for (SettingDefinition *sd = config->setting_defs; sd->id != -1; ++sd)
-        printf("\t%s: %s\n", sd->name, "N/I");
+    printf("Options:\n");
+    for (OptionDefinition *od = config->option_defs; od->id != -1; ++od)
+        printf("\t%s: %s\n", od->name, "N/I");
 }
 
 void print_version(Config* config)
@@ -264,7 +277,68 @@ void print_usage(Config* config)
     }
 }
 
-int parse_config(Config *config, char *config_file)
+#define STATE_NONE          0
+#define STATE_NAME          1
+#define STATE_QUOTED_NAME   2
+#define STATE_ASSIGN        3
+#define STATE_VALUE         4
+#define STATE_QUOTED_VALUE  5
+#define STATE_SKIP_EOL      6
+
+
+int parse_config_file(Config *config, char *config_file)
 {
+    assert(config);
+    if (!config_file || !*config_file)
+        return 0; // TODO: result code
+
+    FILE *f = fopen(config_file, "r");
+    if (!f) {
+        fprintf(stderr,
+            "Error: Could not open config '%s'\n", config_file);
+        return -1; // TODO: result code
+    }
+    char buf[CFG_BUFFER_SIZE];
+    int state = STATE_NONE;
+    Buffer  *name;
+    Buffer  *value;
+
+    int rc = buffer_alloc(16, &name);
+    if (rc) {
+        goto exit;
+    }
+    rc = buffer_alloc(1024, &value);
+    if (rc) {
+        goto cleanup;
+    }
+    while (!feof(f) && fgets(buf, sizeof(buf), f)) {
+        switch (state) {
+        case STATE_NONE:
+            break;
+
+        case STATE_NAME:
+            break;
+
+        case STATE_QUOTED_NAME:
+            break;
+
+        case STATE_ASSIGN:
+            break;
+
+        case STATE_VALUE:
+            break;
+
+        case STATE_QUOTED_VALUE:
+            break;
+
+        case STATE_SKIP_EOL:
+            break;
+        }
+    }
+cleanup:
+    buffer_free_string(&value);
+exit:
+    fclose(f);
+
     return 0;
 }
