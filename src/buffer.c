@@ -34,7 +34,7 @@
  *   YTE_CORRUPTION      when data integrity is broken.
  */
 
-int buffer_seek(Buffer *buffer, int seek_mode,
+int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
                    BufferPage **page, int *page_offset)
 {
@@ -42,6 +42,8 @@ int buffer_seek(Buffer *buffer, int seek_mode,
 
     int target_page;
     int offset;
+
+    Buffer *buf = *buffer;
 
     switch (seek_mode)
     {
@@ -54,7 +56,7 @@ int buffer_seek(Buffer *buffer, int seek_mode,
         break;
     case BUF_SEEK_BUFFER_OFFSET:
         {
-            div_t q = div(seek_offset, buffer->page_size);
+            div_t q = div(seek_offset, buf->page_size);
             target_page = q.quot;
             offset = q.rem;
         }
@@ -64,7 +66,7 @@ int buffer_seek(Buffer *buffer, int seek_mode,
         break;
     }
 
-    BufferPage *p = buffer->tail;
+    BufferPage *p = buf->tail;
     int idx;
 
     for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
@@ -228,20 +230,36 @@ int buffer_append(Buffer **buffer, char *string, int size)
     return 0;
 }
 
+
+int buffer_used(Buffer **buffer, int *used)
+{
+    assert(buffer);
+
+    if (!used)
+        return -1; // TODO: result code - invalid argument
+
+    if (!*buffer)
+        *used = 0;
+    else
+        *used = (*buffer)->used;
+
+    return 0;
+}
+
+
 /* Get a string from buffer contents.
  *
  * Creates a zero-terminated string from all the contents of the buffer.
  *
  * Parameters:
  *   @buffer        [in] buffer to work on;
- *   @string        [out] string containing buffer data;
- *                        to be freed by buffer_free_string.
+ *   @string        [out] String containing buffer data.
  *
  * Returns:
  *   YTE_OK             on success;
  */
 
-int buffer_get_as_string(Buffer **buffer, char **string)
+int buffer_get_as_string(Buffer **buffer, String *string)
 {
     assert(buffer);
 

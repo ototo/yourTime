@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #include "version.h"
@@ -286,7 +288,7 @@ void print_usage(Config* config)
 #define STATE_SKIP_EOL      6
 
 
-int parse_config_file(Config *config, char *config_file)
+int config_parse_file(Config *config, char *config_file)
 {
     assert(config);
     if (!config_file || !*config_file)
@@ -300,45 +302,201 @@ int parse_config_file(Config *config, char *config_file)
     }
     char buf[CFG_BUFFER_SIZE];
     int state = STATE_NONE;
-    Buffer  *name;
-    Buffer  *value;
+    Buffer  *name_buf;
+    Buffer  *value_buf;
 
-    int rc = buffer_alloc(16, &name);
+    int rc = buffer_alloc(16, &name_buf);
     if (rc) {
         goto exit;
     }
-    rc = buffer_alloc(1024, &value);
+    rc = buffer_alloc(512, &value_buf);
     if (rc) {
         goto cleanup;
     }
-    while (!feof(f) && fgets(buf, sizeof(buf), f)) {
+
+    char *end_buf = buf + CFG_BUFFER_SIZE - 1;
+    char *ch = end_buf;
+    String name;
+    String value;
+    bool skipped_leading_whitespace = false;
+    for (;;) {
+        if (ch > end_buf) {
+            if (!fgets(buf, sizeof(char) * CFG_BUFFER_SIZE, f)) {
+                if (!feof(f)) {
+                    rc = -1; // TODO: result code - error reading file
+                    goto full_cleanup;
+                }
+                else
+                    break; // EOF
+            }
+        }
         switch (state) {
         case STATE_NONE:
+            if (*ch == '#')
+                state = STATE_SKIP_EOL;
+            else if (*ch == '"')
+                state = STATE_QUOTED_NAME;
+            else if (!isspace(*ch)) {
+                state = STATE_NAME;
+                continue; // do not advance the pointer
+            }
             break;
 
         case STATE_NAME:
+            if (isspace(*ch) || *ch == '=') {
+                rc = buffer_get_as_string(&name_buf, &name);
+                if (!rc)
+                    goto full_cleanup;
+                state = (*ch == '=') ? STATE_VALUE : STATE_ASSIGN;
+            }
+            else if (*ch == '#')
+                state = STATE_SKIP_EOL;
+            else if (*ch == '"')
+                state = STATE_QUOTED_NAME;
+            else {
+                rc = buffer_append(&name_buf, ch, 1);
+                if (!rc)
+                    goto full_cleanup;
+            }
             break;
 
         case STATE_QUOTED_NAME:
+            if (*ch == '"') {
+                rc = buffer_get_as_string(&name_buf, &name);
+                if (!rc)
+                    goto full_cleanup;
+                rc = buffer_seek(&name_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                    NULL, (BufferPage**)NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+                state = STATE_ASSIGN;
+            }
+            else {
+                rc = buffer_append(&name_buf, ch, 1);
+                if (!rc)
+                    goto full_cleanup;
+            }
             break;
 
         case STATE_ASSIGN:
+            if (*ch == '=') {
+                skipped_leading_whitespace = false;
+                state = STATE_VALUE;
+            }
             break;
 
         case STATE_VALUE:
+            if (*ch == '"') {
+                state = STATE_QUOTED_VALUE;
+                continue; // do not advance the pointer
+            }
+            else if (*ch == '#') {
+                rc = buffer_get_as_string(&value_buf, &value);
+                if (rc)
+                    goto full_cleanup;
+                rc = buffer_seek(&value_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                    NULL, NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+                state = STATE_SKIP_EOL;
+            }
+            else if (isspace(*ch)) {
+                if (skipped_leading_whitespace) {
+                    rc = buffer_get_as_string(&value_buf, &value);
+                    if (rc)
+                        goto full_cleanup;
+                    rc = buffer_seek(&value_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                        NULL, NULL, NULL);
+                    if (rc)
+                        goto full_cleanup;
+
+                    rc = config_set_option(config, &name, &value);
+                    if (rc)
+                        goto full_cleanup;
+
+                    state = STATE_SKIP_EOL;
+                }
+            }
+            else {
+                skipped_leading_whitespace = true;
+                rc = buffer_append(&value_buf, ch, 1);
+                if (!rc)
+                    goto full_cleanup;
+            }
             break;
 
         case STATE_QUOTED_VALUE:
+            if (*ch == '"') {
+                rc = buffer_get_as_string(&value_buf, &value);
+                if (!rc)
+                    goto full_cleanup;
+                rc = buffer_seek(&value_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                    NULL, (BufferPage**)NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+
+                rc = config_set_option(config, &name, &value);
+                if (rc)
+                    goto full_cleanup;
+
+                state = STATE_SKIP_EOL;
+            }
+            else {
+                rc = buffer_append(&name_buf, ch, 1);
+                if (!rc)
+                    goto full_cleanup;
+            }
             break;
 
         case STATE_SKIP_EOL:
             break;
         }
+        ++ch;
     }
+
+full_cleanup:
+    string_release(&name);
+    string_release(&value);
+    buffer_free(&value_buf);
 cleanup:
-    buffer_free_string(&value);
+    buffer_free(&name_buf);
 exit:
     fclose(f);
 
     return 0;
+}
+
+static
+int strscmp(const char *safe, const char *unsafe)
+{
+    for (; *safe; ++safe, ++unsafe)
+        if (*safe < *unsafe)
+            return -1;
+        else if (*safe > *unsafe)
+            return 1;
+    if (*unsafe)
+        return 1;
+
+    return 0;
+}
+
+
+int config_set_option(Config *config, const String *name,
+                      const String *value)
+{
+    assert(config);
+
+    int rc;
+
+    for (OptionDefinition *od = config->option_defs; od->id != -1; ++od) {
+        if (!strscmp(od->name, name->chars)) {
+            String *str = (String *)((void *)config + od->offset);
+            rc = string_copy(str, value);
+            if (rc)
+                return rc; // TODO: result code - unable to copy
+            return 0;
+        }
+    }
+
+    return -1; // TODO: result code - unknown option
 }

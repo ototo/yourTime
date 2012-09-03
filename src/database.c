@@ -92,7 +92,7 @@ int db_init(Database *db, Config *cfg)
 
     memset(db, 0, sizeof(db));
     db->config = cfg;
-    db->file_name = cfg->database_file;
+    //db->file_name = cfg->database_file;
 
     return 0;
 }

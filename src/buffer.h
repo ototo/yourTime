@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include "string.h"
+
+
 #define BUF_SEEK_PAGE_OFFSET        0
 #define BUF_SEEK_PAGE_REL_OFFSET    1
 #define BUF_SEEK_BUFFER_OFFSET      2
@@ -41,9 +44,10 @@ typedef struct _Buffer Buffer;
 
 int buffer_alloc(int page, Buffer **buffer);
 int buffer_append(Buffer **buffer, char *string, int size);
-int buffer_get_as_string(Buffer **buffer, char **string);
+int buffer_used(Buffer **buffer, int *used);
+int buffer_get_as_string(Buffer **buffer, String *string);
 int buffer_free_string(char **string);
-int buffer_seek(Buffer *buffer, int seek_mode,
+int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
                    BufferPage **page, int *page_offset);
 int buffer_trim(Buffer **buffer, int new_size);

@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "version.h"
+#include "string.h"
 
 #define CFG_USER_NAME_LENGTH        256
 #define CFG_USER_EMAIL_LENGTH       256
@@ -130,6 +131,7 @@ struct _AnySwitch {
 
 typedef struct _AnySwitch AnySwitch;
 
+
 /* In-memory configuration for the program. */
 struct _Config
 {
@@ -139,10 +141,10 @@ struct _Config
 
     /* variables */
     unsigned int            verbosity   : VERBOSITY_BITS;
-    char                    config_file[_PC_PATH_MAX];
-    char                    database_file[_PC_PATH_MAX];
-    char                    user_name[CFG_USER_NAME_LENGTH];
-    char                    user_email[CFG_USER_EMAIL_LENGTH];
+    String                  config_file;
+    String                  database_file;
+    String                  user_name;
+    String                  user_email;
 };
 
 typedef struct _Config Config;
@@ -201,4 +203,6 @@ void print_options(Config *config);
 void print_version(Config *config);
 void print_usage(Config *config);
 
-int parse_config_file(Config *config, char *config_file);
+int config_parse_file(Config *config, char *config_file);
+int config_set_option(Config *config, const String *name,
+                      const String *value);
