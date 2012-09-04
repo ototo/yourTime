@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <assert.h>
 
 #include "version.h"
@@ -285,8 +286,31 @@ void print_usage(Config* config)
 #define STATE_ASSIGN        3
 #define STATE_VALUE         4
 #define STATE_QUOTED_VALUE  5
-#define STATE_SKIP_EOL      6
+#define STATE_SKIP_TO_EOL   6
 
+bool is_ws(char ch)
+{
+    switch (ch) {
+    case '\t':
+    case '\f':
+    case '\v':
+    case ' ':
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool is_eol(char ch)
+{
+    switch (ch) {
+    case '\r':
+    case '\n':
+        return true;
+    default:
+        return false;
+    }
+}
 
 int config_parse_file(Config *config, char *config_file)
 {
@@ -304,6 +328,8 @@ int config_parse_file(Config *config, char *config_file)
     int state = STATE_NONE;
     Buffer  *name_buf;
     Buffer  *value_buf;
+    int line = 1;
+    int column = 1;
 
     int rc = buffer_alloc(16, &name_buf);
     if (rc) {
@@ -315,12 +341,20 @@ int config_parse_file(Config *config, char *config_file)
     }
 
     char *end_buf = buf + CFG_BUFFER_SIZE - 1;
-    char *ch = end_buf;
+    char *pch = buf;
+    char ch;
     String name;
     String value;
-    bool skipped_leading_whitespace = false;
+    uint16_t eols = 0;
+
+#define EOL_PAIR(first, second) \
+    ((((uint16_t)first) << (8 & 0xFF)) | ((uint16_t)second & 0xFF))
+
+#define EOL_PAIR_SHIFT(pair, new) \
+    pair = ((pair << 8) | ((uint16_t)new & 0xFF))
+
     for (;;) {
-        if (ch > end_buf) {
+        if (pch > end_buf) {
             if (!fgets(buf, sizeof(char) * CFG_BUFFER_SIZE, f)) {
                 if (!feof(f)) {
                     rc = -1; // TODO: result code - error reading file
@@ -329,39 +363,99 @@ int config_parse_file(Config *config, char *config_file)
                 else
                     break; // EOF
             }
+            pch = buf;
+            ch = *pch;
         }
+        /* FSM: char-by-char config file parser
+         *
+         * Treats missing value as an empty value.
+         *
+         *
+         * state         input         new state     action
+         * ------------  ------------  ------------  -------------
+         * NONE          '#'           SKIP_TO_EOL   -
+         * NONE          '"'           QUOTED_NAME   -
+         * NONE          !is_ws        NAME          keep char
+         * NONE          *             NONE          -
+         *
+         * NAME          '#'           SKIP_TO_EOL   -
+         * NAME          '"'           SKIP_TO_EOL   -
+         * NAME          !is_ws        NAME          name.append
+         * NAME          '='           ASSIGN        name.store
+         * NAME          is_eol        SKIP_TO_EOL   name.discard
+         * NAME          is_ws         ASSIGN        name.store
+         *
+         * QUOTED_NAME   '"'           ASSIGN        name.store
+         * QUOTED_NAME   is_eol        SKIP_TO_EOL   name.discard
+         * QUOTED_NAME   *             QUOTED_NAME   name.append
+         *
+         * ASSIGN        '='           VALUE         -
+         * ASSIGN        !is_ws        SKIP_TO_EOL   -
+         * ASSIGN        is_eol        NONE          name.discard
+         *
+         * VALUE         '"'           QUOTED_VALUE  -
+         * VALUE         is_eol        NONE          value.store
+         * VALUE         is_ws   (1)   VALUE         -
+         * VALUE         !is_ws        VALUE         value.append
+         * VALUE         is_ws   (2)   SKIP_TO_EOL   value.store
+         * VALUE         '#'           SKIP_TO_EOL   value.store
+         *
+         * QUOTED_VALUE  '"'           SKIP_TO_EOL   -
+         * QUOTED_VALUE  is_eol        SKIP_TO_EOL   value.discard
+         * QUOTED_VALUE  *             QUOTED_VALUE  value.append
+         *
+         * SKIP_TO_EOL   is_eol        NONE          -
+         * SKIP_TO_EOL   *             SKIP_TO_EOL   -
+         *
+         * ----------------
+         * (1) whitespace before the first non-whitespace char
+         * (2) whitespace after at least one non-whitespace char
+         *
+         */
+        bool skipping_ws = true;
+
         switch (state) {
         case STATE_NONE:
-            if (*ch == '#')
-                state = STATE_SKIP_EOL;
-            else if (*ch == '"')
+            if (ch == '#')
+                state = STATE_SKIP_TO_EOL;
+            else if (ch == '"') {
+                skipping_ws = false;
                 state = STATE_QUOTED_NAME;
-            else if (!isspace(*ch)) {
+            }
+            else if (!is_ws(ch)) {
+                skipping_ws = false;
                 state = STATE_NAME;
-                continue; // do not advance the pointer
+                continue; // keep the char for the new state
             }
             break;
 
         case STATE_NAME:
-            if (isspace(*ch) || *ch == '=') {
+            if (ch == '"')
+                state = STATE_QUOTED_NAME;
+            else if ((!skipping_ws && is_ws(ch)) || ch == '=') {
                 rc = buffer_get_as_string(&name_buf, &name);
                 if (!rc)
                     goto full_cleanup;
-                state = (*ch == '=') ? STATE_VALUE : STATE_ASSIGN;
+                rc = buffer_seek(&name_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                 NULL, (BufferPage **) NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+                state = (ch == '=') ? STATE_VALUE : STATE_ASSIGN;
             }
-            else if (*ch == '#')
-                state = STATE_SKIP_EOL;
-            else if (*ch == '"')
-                state = STATE_QUOTED_NAME;
+            else if (ch == '#')
+                state = STATE_SKIP_TO_EOL;
+            else if (is_eol(ch)) {
+                state = STATE_SKIP_TO_EOL;
+            }
             else {
-                rc = buffer_append(&name_buf, ch, 1);
+                rc = buffer_append(&name_buf, &ch, 1);
                 if (!rc)
                     goto full_cleanup;
             }
             break;
 
         case STATE_QUOTED_NAME:
-            if (*ch == '"') {
+            if (ch == '"') {
                 rc = buffer_get_as_string(&name_buf, &name);
                 if (!rc)
                     goto full_cleanup;
@@ -371,26 +465,43 @@ int config_parse_file(Config *config, char *config_file)
                     goto full_cleanup;
                 state = STATE_ASSIGN;
             }
+            else if (is_eol(ch)) {
+                state = STATE_SKIP_TO_EOL;
+                rc = buffer_seek(&name_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                 NULL, (BufferPage **) NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+            }
             else {
-                rc = buffer_append(&name_buf, ch, 1);
+                rc = buffer_append(&name_buf, &ch, 1);
                 if (!rc)
                     goto full_cleanup;
             }
             break;
 
         case STATE_ASSIGN:
-            if (*ch == '=') {
-                skipped_leading_whitespace = false;
+            if (ch == '=') {
+                skipping_ws = true;
                 state = STATE_VALUE;
+            }
+            else if (!is_ws(ch))
+                state = STATE_SKIP_TO_EOL;
+            else if (is_eol(ch)) {
+                state = STATE_NONE;
+                rc = buffer_seek(&name_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                 NULL, (BufferPage **) NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
             }
             break;
 
         case STATE_VALUE:
-            if (*ch == '"') {
+            if (ch == '"') {
                 state = STATE_QUOTED_VALUE;
-                continue; // do not advance the pointer
+                continue; // keep the same char
             }
-            else if (*ch == '#') {
+            else if (ch == '#' || is_eol(ch) ||
+                                    (!skipping_ws && is_ws(ch))) {
                 rc = buffer_get_as_string(&value_buf, &value);
                 if (rc)
                     goto full_cleanup;
@@ -398,35 +509,23 @@ int config_parse_file(Config *config, char *config_file)
                                     NULL, NULL, NULL);
                 if (rc)
                     goto full_cleanup;
-                state = STATE_SKIP_EOL;
-            }
-            else if (isspace(*ch)) {
-                if (skipped_leading_whitespace) {
-                    rc = buffer_get_as_string(&value_buf, &value);
-                    if (rc)
-                        goto full_cleanup;
-                    rc = buffer_seek(&value_buf, BUF_SEEK_BUFFER_OFFSET, 0,
-                                        NULL, NULL, NULL);
-                    if (rc)
-                        goto full_cleanup;
 
-                    rc = config_set_option(config, &name, &value);
-                    if (rc)
-                        goto full_cleanup;
+                rc = config_set_option(config, &name, &value);
+                if (rc)
+                    goto full_cleanup;
 
-                    state = STATE_SKIP_EOL;
-                }
+                state = STATE_SKIP_TO_EOL;
             }
-            else {
-                skipped_leading_whitespace = true;
-                rc = buffer_append(&value_buf, ch, 1);
+            else if (!is_ws(ch)) {
+                skipping_ws = false;
+                rc = buffer_append(&value_buf, &ch, 1);
                 if (!rc)
                     goto full_cleanup;
             }
             break;
 
         case STATE_QUOTED_VALUE:
-            if (*ch == '"') {
+            if (ch == '"') {
                 rc = buffer_get_as_string(&value_buf, &value);
                 if (!rc)
                     goto full_cleanup;
@@ -438,20 +537,94 @@ int config_parse_file(Config *config, char *config_file)
                 rc = config_set_option(config, &name, &value);
                 if (rc)
                     goto full_cleanup;
-
-                state = STATE_SKIP_EOL;
+                state = STATE_SKIP_TO_EOL;
+            }
+            else if (is_eol(ch)) {
+                rc = buffer_seek(&value_buf, BUF_SEEK_BUFFER_OFFSET, 0,
+                                    NULL, (BufferPage**)NULL, NULL);
+                if (rc)
+                    goto full_cleanup;
+                state = STATE_SKIP_TO_EOL;
             }
             else {
-                rc = buffer_append(&name_buf, ch, 1);
+                rc = buffer_append(&name_buf, &ch, 1);
                 if (!rc)
                     goto full_cleanup;
             }
             break;
 
-        case STATE_SKIP_EOL:
+        case STATE_SKIP_TO_EOL:
+            if (is_eol(ch))
+                state = STATE_NONE;
             break;
         }
-        ++ch;
+
+        /* handle end of line chars
+         *
+         * cr    - single eol
+         * lf    - single eol
+         * cr+lf - single eol
+         * lf+cr - single eol
+         */
+        if (ch == '\r')
+            switch (eols)
+            {
+            case EOL_PAIR('\0', '\0'):
+            case EOL_PAIR('\0', '\r'):
+            case EOL_PAIR('\r', '\0'):
+            case EOL_PAIR('\r', '\n'):
+            case EOL_PAIR('\n', '\0'):
+            case EOL_PAIR('\n', '\r'):
+                EOL_PAIR_SHIFT(eols, ch);
+                // fall through
+            case EOL_PAIR('\r', '\r'):
+                ++line;
+                column = 1;
+                break;
+
+            case EOL_PAIR('\n', '\n'):
+                eols = EOL_PAIR('\0', '\r');
+                ++line;
+                column = 1;
+                break;
+
+            case EOL_PAIR('\0', '\n'):
+                EOL_PAIR_SHIFT(eols, ch);
+            default:
+                break;
+            }
+        else if(ch == '\n')
+            switch (eols) {
+            case EOL_PAIR('\0', '\0'):
+            case EOL_PAIR('\0', '\n'):
+            case EOL_PAIR('\n', '\0'):
+            case EOL_PAIR('\n', '\r'):
+            case EOL_PAIR('\r', '\0'):
+            case EOL_PAIR('\r', '\n'):
+                EOL_PAIR_SHIFT(eols, ch);
+                // fall through
+            case EOL_PAIR('\n', '\n'):
+                ++line;
+                column = 1;
+                break;
+
+            case EOL_PAIR('\r', '\r'):
+                eols = EOL_PAIR('\0', '\n');
+                ++line;
+                column = 1;
+                break;
+
+            case EOL_PAIR('\0', '\r'):
+                EOL_PAIR_SHIFT(eols, ch);
+            default:
+                break;
+            }
+        else  {
+            if (eols)
+                EOL_PAIR_SHIFT(eols, ch);
+            ++column;
+        }
+        ch = *(++pch);
     }
 
 full_cleanup:
