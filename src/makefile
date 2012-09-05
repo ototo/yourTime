@@ -42,7 +42,7 @@ test_forward_declarations.inc: $(TEST_SOURCES)
 test_build: $(ALL_TEST_SOURCES) $(TEST_EXECUTABLE) \
             tests.inc test_forward_declarations.inc
 
-test_run: test_build $(LIST_OF_TESTS) $(TEST_REPORT)
+test_run: test_build $(LIST_OF_TESTS)
 	./$(TEST_EXECUTABLE) 2>$(TEST_REPORT)
 
 clean:

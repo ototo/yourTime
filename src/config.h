@@ -48,7 +48,7 @@ struct _OptionDefinition {
 typedef struct _OptionDefinition OptionDefinition;
 
 #define field_offset(type, field) \
-    (int)(&(((type*)0)->field))
+    (intptr_t)(&(((type*)0)->field))
 
 
 /* Switch definitions */
