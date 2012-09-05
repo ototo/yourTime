@@ -33,14 +33,22 @@ cli: $(ALL_SOURCES) $(EXECUTABLE)
 
 test: test_build test_run
 
-test_build: $(ALL_TEST_SOURCES) $(TEST_EXECUTABLE)
+tests.inc: $(TEST_SOURCES)
+	@grep START_TEST test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/{"\1", "\2", test_\2},/' > $@
 
-test_run: test_build $(TEST_REPORT)
-	./$(TEST_EXECUTABLE) 2>&1 | tee $(TEST_REPORT)
+test_forward_declarations.inc: $(TEST_SOURCES)
+	@grep START_TEST test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/int test_\2();/' > $@
+
+test_build: $(ALL_TEST_SOURCES) $(TEST_EXECUTABLE) \
+            tests.inc test_forward_declarations.inc
+
+test_run: test_build $(LIST_OF_TESTS) $(TEST_REPORT)
+	./$(TEST_EXECUTABLE) 2>$(TEST_REPORT)
 
 clean:
-	rm -f *.o
-	rm -f yt tyt
+	@rm -f *.o
+	@rm -f yt tyt
+	@rm tests.inc test_forward_declarations.inc
 
 # dependency tree
 main.o: main.c config.h database.h commands.h
@@ -49,16 +57,14 @@ database.o: database.c database.h
 commands.c: commands.h config.h
 buffer.c: buffer.h
 string.c: string.h
-test_main.c: test.h version.h
+test_main.c: tests.inc test_forward_declarations.inc test.h version.h
 test_config.c: test.h config.h
 # end
 
 $(EXECUTABLE): $(OBJECTS) $(MAIN_OBJECT)
-	echo "Building $(EXECUTABLE): $(OBJECTS), $(MAIN_OBJECT)..."
 	$(CC) $(LDFLAGS) $(MAIN_OBJECT) $(OBJECTS) $(LIBS) -o $@
 
 $(TEST_EXECUTABLE): $(OBJECTS) $(TEST_OBJECTS) $(TEST_MAIN_OBJECT)
-	echo "Building $(TEST_EXECUTABLE): $(TEST_OBJECTS), $(TEST_MAIN_OBJECT)..."
 	$(CC) $(LDFLAGS) $(TEST_MAIN_OBJECT) $(OBJECTS) $(TEST_OBJECTS) $(LIBS) -o $@
 
 .c.o:
