@@ -12,6 +12,7 @@
 
 #include "database.h"
 #include "buffer.h"
+#include "string.h"
 
 struct _ColumnDefinition
 {
@@ -177,23 +178,24 @@ int db_create_schema(Database *db)
         BUFFER_APPEND(&buf, SQL_CREATE_END)
     }
 
-    char *sql;
+    String sql;
     rc = buffer_get_as_string(&buf, &sql);
     if (rc)
         goto error_cleanup;
 
     char *errmsg;
-    rc = sqlite3_exec(db->db, sql, NULL, NULL, &errmsg);
+    rc = sqlite3_exec(db->db, sql.chars, NULL, NULL, &errmsg);
     if (rc) {
         fprintf(stderr, "Can't create database: %s\n",
                 sqlite3_errmsg(db->db));
         goto error_cleanup_sql;
     }
+    rc = string_release(&sql);
 
     return rc;
 
 error_cleanup_sql:
-    buffer_free_string(&sql);
+    //buffer_free_string(&sql);
 
 error_cleanup:
     buffer_free(&buf);
