@@ -2,5 +2,8 @@
 yt
 tyt
 test_report
+vcsinfo.inc
 tests.inc
 test_forward_declarations.inc
+.deps/*
+.objs/*

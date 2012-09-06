@@ -12,3 +12,4 @@
 #define YOURTIME_VERSION "0.1a"
 #define YOURTIME_BUILD_DATE __DATE__
 #define YOURTIME_BUILD_TIMESTAMP __TIMESTAMP__
+#include "vcsinfo.inc"

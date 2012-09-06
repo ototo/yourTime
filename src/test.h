@@ -25,7 +25,7 @@ int test_##test_name() \
 #define TEST_TRUE(expr) \
     if (!(expr)) {\
         printf("%s%s:%d: Test for TRUE in %s:%s has failed!\n",\
-        (failed ? "" : "FAIL!\n"), __FILE__, __LINE__,\
+        (failed ? "" : "\033[u\033[37;41mFAIL\033[0m\n"), __FILE__, __LINE__,\
         suite, name);\
         ++failed;\
     }
@@ -33,7 +33,7 @@ int test_##test_name() \
 #define TEST_FALSE(expr) \
     if ((expr)) {\
         printf("%s%s:%d: Test for FALSE in %s:%s has failed!\n",\
-        (failed ? "" : "FAIL!\n"), __FILE__, __LINE__,\
+        (failed ? "" : "\033[u\033[37;41mFAIL\033[0m\n"), __FILE__, __LINE__,\
         suite, name);\
         ++failed;\
     }
@@ -41,7 +41,7 @@ int test_##test_name() \
 #define TEST_EQUAL(expr1, expr2) \
     if ((expr1) != (expr2)) {\
         printf("%s%s:%d: Test for EQUAL in %s:%s has failed!\n",\
-        (failed ? "" : "FAIL!\n"), __FILE__, __LINE__,\
+        (failed ? "" : "\033[u\033[317;41m\n"), __FILE__, __LINE__,\
         suite, name);\
         ++failed;\
     }

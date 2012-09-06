@@ -1,6 +1,12 @@
 CC=gcc
 CFLAGS=-c -std=c99 -Wall -g
 LDFLAGS=-std=c99 -g
+COMPILE_C=$(CC) $(CFLAGS) $(CPPFLAGS)
+VCSINFO:=$(shell git --version | cut -d" " -f 1,3)
+
+DEPDIR=.deps
+OBJDIR=.objs
+DEPFILE=$(DEPDIR)/$(*F)
 
 MAIN= main.c
 SOURCES= \
@@ -10,28 +16,59 @@ SOURCES= \
     buffer.c \
     string.c
 ALL_SOURCES=$(MAIN) $(SOURCES)
-OBJECTS=$(SOURCES:.c=.o)
-MAIN_OBJECT=$(MAIN:.c=.o)
+OBJECTS=$(SOURCES:%.c=$(OBJDIR)/%.o)
+MAIN_OBJECT=$(MAIN:%.c=$(OBJDIR)/%.o)
 
 TEST_MAIN= test_main.c
 TEST_SOURCES= \
     test_config.c
 ALL_TEST_SOURCES=$(TEST_MAIN) $(TEST_SOURCES)
-TEST_OBJECTS=$(TEST_SOURCES:.c=.o)
-TEST_MAIN_OBJECT=$(TEST_MAIN:.c=.o)
+TEST_OBJECTS=$(TEST_SOURCES:%.c=$(OBJDIR)/%.o)
+TEST_MAIN_OBJECT=$(TEST_MAIN:%.c=$(OBJDIR)/%.o)
 TEST_REPORT=test_report
 
 LIBS=-lsqlite3
 EXECUTABLE=yt
 TEST_EXECUTABLE=tyt
 
+$(OBJDIR)/%.o: %.c $(DEPDIR)/.ts $(OBJDIR)/.ts
+	$(COMPILE_C) -MD -o $@ $<
+		cp $(OBJDIR)/$*.d $(DEPFILE).P; \
+		sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+			-e '/^$$/ d' -e 's/$$/ :/' \
+			< $(OBJDIR)/$*.d >> $(DEPFILE).P; \
+		rm -f $(OBJDIR)/$*.d
+
 .PHONY : clean all cli test test_build
 
 all: cli test
 
-cli: $(ALL_SOURCES) $(EXECUTABLE)
+version.h: vcsinfo.inc
+
+test_main.c: tests.inc test_forward_declarations.inc
+
+# include dependencies
+-include $(ALL_SOURCES:%.c=$(DEPDIR)/%.P)
+-include $(ALL_TEST_SOURCES:%.c=$(DEPDIR)/%.P)
+
+cli: vcsinfo.inc $(ALL_SOURCES) $(EXECUTABLE)
 
 test: test_build test_run
+
+$(OBJDIR)/.ts:
+	mkdir -p $(dir $@)
+	touch $@
+
+$(DEPDIR)/.ts:
+	mkdir -p $(dir $@)
+	touch $@
+
+vcsinfo.inc: ../.git/
+	@echo "Generating $@..."
+	-@echo '/* VCS Information */' > $@
+	-@echo '#define YOURTIME_VCS "$(VCSINFO)"' >> $@
+	-@echo '#define YOURTIME_REVISION "$(shell git rev-parse --short HEAD)"' >> $@
+	-@echo '#define YOURTIME_BRANCH "$(shell git branch | grep "*" | cut -d" " -f 2)"' >> $@
 
 tests.inc: $(TEST_SOURCES)
 	@grep START_TEST test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/{"\1", "\2", test_\2},/' > $@
@@ -39,27 +76,22 @@ tests.inc: $(TEST_SOURCES)
 test_forward_declarations.inc: $(TEST_SOURCES)
 	@grep START_TEST test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/int test_\2();/' > $@
 
-test_build: $(ALL_TEST_SOURCES) $(TEST_EXECUTABLE) \
-            tests.inc test_forward_declarations.inc
+test_build: tests.inc test_forward_declarations.inc \
+			$(ALL_TEST_SOURCES) $(TEST_EXECUTABLE)
 
 test_run: test_build $(LIST_OF_TESTS)
 	./$(TEST_EXECUTABLE) 2>$(TEST_REPORT)
 
 clean:
-	@rm -f *.o
-	@rm -f yt tyt
-	@rm tests.inc test_forward_declarations.inc
-
-# dependency tree
-main.o: main.c config.h database.h commands.h
-config.o: config.c config.h
-database.o: database.c database.h
-commands.c: commands.h config.h
-buffer.c: buffer.h
-string.c: string.h
-test_main.c: tests.inc test_forward_declarations.inc test.h version.h
-test_config.c: test.h config.h
-# end
+	-@(rm -f *.o 2>&1) > /dev/null
+	-@(rm -f yt tyt 2>&1) > /dev/null
+	-@(rm vcsinfo.inc tests.inc test_forward_declarations.inc 2>&1) > /dev/null
+	-@(rm -f $(DEPDIR)/* 2>&1) > /dev/null
+	-@(rm -f $(DEPDIR)/.* 2>&1) > /dev/null
+	-@(rmdir $(DEPDIR) 2>&1) > /dev/null
+	-@(rm -f $(OBJDIR)/* 2>&1) > /dev/null
+	-@(rm -f $(OBJDIR)/.* 2>&1) > /dev/null
+	-@(rmdir $(OBJDIR) 2>&1) > /dev/null
 
 $(EXECUTABLE): $(OBJECTS) $(MAIN_OBJECT)
 	$(CC) $(LDFLAGS) $(MAIN_OBJECT) $(OBJECTS) $(LIBS) -o $@

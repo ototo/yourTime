@@ -31,23 +31,25 @@ int main(int argc, char *argv[])
         { NULL, NULL, NULL }
     };
 
-    printf("Running tests for %s v%s:\n", YOURTIME_FULL_NAME,
-                                            YOURTIME_VERSION);
+    printf("Running tests for %s v%s [%s/%s]:\n",
+            YOURTIME_FULL_NAME, YOURTIME_VERSION,
+            YOURTIME_REVISION, YOURTIME_BRANCH);
 
     int rc = 0;
     int total = 0;
     int failed = 0;
     for(TestRecord *test = tests; test->function; ++test) {
-        printf("- %s:%s: ", test->suite_name, test->test_name);
+        printf("[\033[s....] %s:%s: ", test->suite_name, test->test_name);
         rc = test->function();
         if (rc) {
             ++failed;
         }
         else
-            printf("OK\n");
+            printf("\033[u\033[30;42m OK \033[0m\n");
         ++total;
     }
-    printf("Done running tests (%d total, %d failed).\n", total, failed);
+    printf("Done running tests (%d total, %s%d failed\033[0m).\n",
+            total, failed ? "\033[31m" : "", failed);
 
     return 0;
 }

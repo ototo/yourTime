@@ -233,8 +233,9 @@ void print_options(Config *config)
 void print_version(Config* config)
 {
     printf(
-        "%s v%s, compiled on %s\n",
+        "%s v%s [%s/%s], compiled on %s\n",
          YOURTIME_FULL_NAME, YOURTIME_VERSION,
+         YOURTIME_REVISION, YOURTIME_BRANCH,
          YOURTIME_BUILD_TIMESTAMP);
 }
 

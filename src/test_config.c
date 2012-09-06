@@ -8,6 +8,18 @@
 #include "test.h"
 
 
+START_TEST(config, config_init)
+
+    TEST_TRUE(true);
+
+END_TEST
+
+START_TEST(config, config_process_args)
+
+    TEST_TRUE(true);
+
+END_TEST
+
 START_TEST(config, config_parse_file)
 
     TEST_TRUE(true);
