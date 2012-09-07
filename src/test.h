@@ -9,17 +9,35 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <setjmp.h>
+#include <signal.h>
 
+
+#define CATCH_SIGNALS \
+    setup_signal_handlers();\
+    if (sigsetjmp(g_sig_env, 1)) {\
+        printf("%s%s:%d: Signal %d:%s caught in %s:%s!\n",\
+        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, g_signo, signame(g_signo), suite, name);\
+        ++failed;\
+    }
+
+#define STOP_CATCHING_SIGNALS \
+    reset_signal_handlers();
 
 #define START_TEST(suite_name, test_name) \
 int test_##test_name() \
 {\
     char *suite = #suite_name;\
     char *name = #test_name;\
-    int failed = 0;
+    int failed = 0;\
+    CATCH_SIGNALS\
+    else {
 
 #define END_TEST \
-    return failed; \
+    }\
+    STOP_CATCHING_SIGNALS\
+    return failed;\
 }
 
 #ifdef USE_ANSI_CODES
@@ -81,3 +99,10 @@ int test_##test_name() \
         __FILE__, __LINE__, suite, name);\
         ++failed;\
     }
+
+
+extern int g_signo;
+extern sigjmp_buf g_sig_env;
+char *signame(int signo);
+void setup_signal_handlers();
+void reset_signal_handlers();

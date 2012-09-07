@@ -5,6 +5,8 @@
  * TODO: complete header (license, author, etc)
  */
 
+#define _XOPEN_SOURCE 600
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -25,6 +27,53 @@ struct _TestRecord
 };
 
 typedef struct _TestRecord TestRecord;
+
+
+/* stuff needed to catch signals generated while running tests */
+sigjmp_buf g_sig_env;
+int g_signo;
+
+char *signame(int signo)
+{
+    switch (signo) {
+    case 1:
+        return "SIGHUP";
+    case 2:
+        return "SIGINT";
+    case 8:
+        return "SIGFPE";
+    case 11:
+        return "SIGSEGV";
+    case 13:
+        return "SIGPIPE";
+    case 15:
+        return "SIGTERM";
+    default:
+        return "";
+    }
+}
+
+static void catch_signal(int signo)
+{
+    g_signo = signo;
+    siglongjmp(g_sig_env, signo);
+    return;
+}
+
+void setup_signal_handlers()
+{
+    g_signo = 0;
+    sigset(SIGINT, catch_signal);
+    sigset(SIGFPE, catch_signal);
+    sigset(SIGSEGV, catch_signal);
+}
+
+void reset_signal_handlers()
+{
+    sigset(SIGSEGV, SIG_DFL);
+    sigset(SIGFPE, SIG_DFL);
+    sigset(SIGINT, SIG_DFL);
+}
 
 int main(int argc, char *argv[])
 {

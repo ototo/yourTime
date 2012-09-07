@@ -5,8 +5,9 @@
  * TODO: complete header (license, author, etc)
  */
 
-#include "test.h"
+#define _XOPEN_SOURCE 600
 
+#include "test.h"
 #include "config.h"
 
 
@@ -30,6 +31,7 @@ START_TEST(config, config_init)
     };
 
     int rc = config_init(&cfg, ssws, lsws, opts);
+
     TEST_EQUAL(rc, 0);
     TEST_EQUAL(cfg.short_switch_defs, ssws);
     TEST_EQUAL(cfg.long_switch_defs, lsws);
@@ -41,6 +43,7 @@ END_TEST
 
 START_TEST(config, config_process_args)
 
+    *((int *)0) = 0; // SIGSEGV
     TEST_TRUE(false);
 
 END_TEST
@@ -49,6 +52,7 @@ END_TEST
 START_TEST(config, config_parse_file)
 
     TEST_TRUE(false);
+    raise(SIGINT);
 
 END_TEST
 
@@ -56,5 +60,6 @@ END_TEST
 START_TEST(config, config_set_option)
 
     TEST_TRUE(false);
+    raise(SIGFPE);
 
 END_TEST
