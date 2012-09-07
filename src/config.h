@@ -197,7 +197,7 @@ int config_init(Config *config, ShortSwitchDefinition *short_switches,
 int config_process_args(Config *config, int argc, char *argv[],
                         SwitchProcessor processor, int *free_args);
 
-void process_switch(AnySwitch *aswitch, Config *cfg);
+void config_process_switch(AnySwitch *aswitch, Config *cfg);
 void print_config(Config *config);
 void print_options(Config *config);
 void print_version(Config *config);

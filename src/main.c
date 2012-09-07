@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
         return rc;
 
     int idx_args = -1;
-    rc = config_process_args(&cfg, argc, argv, process_switch, &idx_args);
+    rc = config_process_args(&cfg, argc, argv, config_process_switch, &idx_args);
     if (rc)
     {
         fprintf(stderr, "Error parsing arguments!\n");

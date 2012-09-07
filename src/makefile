@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-c -std=c99 -Wall -g
-LDFLAGS=-std=c99 -g
+CFLAGS=-c -std=c99 -Wall -g -DUSE_ANSI_CODES
+LDFLAGS=-std=c99 -lm -g
 COMPILE_C=$(CC) $(CFLAGS) $(CPPFLAGS)
 VCSINFO:=$(shell git --version | cut -d" " -f 1,3)
 
@@ -33,7 +33,7 @@ TEST_EXECUTABLE=tyt
 
 $(OBJDIR)/%.o: %.c $(DEPDIR)/.ts $(OBJDIR)/.ts
 	$(COMPILE_C) -MD -o $@ $<
-		cp $(OBJDIR)/$*.d $(DEPFILE).P; \
+		@cp $(OBJDIR)/$*.d $(DEPFILE).P; \
 		sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 			-e '/^$$/ d' -e 's/$$/ :/' \
 			< $(OBJDIR)/$*.d >> $(DEPFILE).P; \

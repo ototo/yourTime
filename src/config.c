@@ -166,7 +166,7 @@ int config_process_args(Config *config, int argc, char* argv[],
 
 
 /* process a switch provided, update the config accordingly */
-void process_switch(AnySwitch* aswitch, Config* cfg)
+void config_process_switch(AnySwitch* aswitch, Config* cfg)
 {
     /*
     if (option->type == OT_SHORT)

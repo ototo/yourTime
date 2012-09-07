@@ -7,27 +7,54 @@
 
 #include "test.h"
 
+#include "config.h"
+
 
 START_TEST(config, config_init)
 
-    TEST_TRUE(true);
+    Config cfg;
+
+    ShortSwitchDefinition ssws[] =
+    {
+        { .id = -1, },
+    };
+
+    LongSwitchDefinition lsws[] =
+    {
+        { .id = -1, },
+    };
+
+    OptionDefinition opts[] =
+    {
+        { .id = -1, },
+    };
+
+    int rc = config_init(&cfg, ssws, lsws, opts);
+    TEST_EQUAL(rc, 0);
+    TEST_EQUAL(cfg.short_switch_defs, ssws);
+    TEST_EQUAL(cfg.long_switch_defs, lsws);
+    TEST_EQUAL(cfg.option_defs, opts);
+    TEST_EQUAL(cfg.verbosity, CFG_DEFAULT_VERBOSITY);
 
 END_TEST
+
 
 START_TEST(config, config_process_args)
 
-    TEST_TRUE(true);
+    TEST_TRUE(false);
 
 END_TEST
 
+
 START_TEST(config, config_parse_file)
 
-    TEST_TRUE(true);
     TEST_TRUE(false);
-    TEST_FALSE(true);
+
+END_TEST
+
+
+START_TEST(config, config_set_option)
+
     TEST_TRUE(false);
-    TEST_FALSE(false);
-    TEST_EQUAL(1, 2);
-    TEST_EQUAL(1, 1);
 
 END_TEST
