@@ -8,17 +8,32 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <execinfo.h>
 
+
+#define BACKTRACE_SIZE 16
 
 #define CATCH_SIGNALS \
     setup_signal_handlers();\
     if (sigsetjmp(g_sig_env, 1)) {\
-        printf("%s%s:%d: Signal %d:%s caught in %s:%s!\n",\
-        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-        __FILE__, __LINE__, g_signo, signame(g_signo), suite, name);\
+         printf("%s%s:%d: Signal %d:%s caught in %s:%s, backtrace is:\n",\
+             (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, g_signo, signame(g_signo), suite, name);\
+        void *array[BACKTRACE_SIZE];\
+        size_t size;\
+        size = backtrace(array, BACKTRACE_SIZE);\
+        char **symbols = backtrace_symbols(array, size);\
+        for (int idx = 0; idx < size; ++idx) {\
+            if (!symbols[idx])\
+                break;\
+            else\
+                printf(" * %s\n", symbols[idx]);\
+        }\
+        free(symbols);\
         ++failed;\
     }
 

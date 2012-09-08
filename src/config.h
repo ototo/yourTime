@@ -174,6 +174,8 @@ int config_init(Config *config, ShortSwitchDefinition *short_switches,
                 LongSwitchDefinition *long_switches,
                 OptionDefinition *options);
 
+int config_free(Config *config);
+
 
 /* Process configuration and command line.
  *

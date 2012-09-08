@@ -1,6 +1,7 @@
 CC=gcc
 CFLAGS=-c -std=c99 -Wall -g -DUSE_ANSI_CODES
 LDFLAGS=-std=c99 -lm -g
+LDTESTFLAGS=-std=c99 -lm -g -rdynamic
 COMPILE_C=$(CC) $(CFLAGS) $(CPPFLAGS)
 VCSINFO:=$(shell git --version | cut -d" " -f 1,3)
 
@@ -86,6 +87,7 @@ clean:
 	-@(rm -f *.o 2>&1) > /dev/null
 	-@(rm -f yt tyt 2>&1) > /dev/null
 	-@(rm vcsinfo.inc tests.inc test_forward_declarations.inc 2>&1) > /dev/null
+	-@(rm $(TEST_REPORT) 2>&1) > /dev/null
 	-@(rm -f $(DEPDIR)/* 2>&1) > /dev/null
 	-@(rm -f $(DEPDIR)/.* 2>&1) > /dev/null
 	-@(rmdir $(DEPDIR) 2>&1) > /dev/null
@@ -97,7 +99,7 @@ $(EXECUTABLE): $(OBJECTS) $(MAIN_OBJECT)
 	$(CC) $(LDFLAGS) $(MAIN_OBJECT) $(OBJECTS) $(LIBS) -o $@
 
 $(TEST_EXECUTABLE): $(OBJECTS) $(TEST_OBJECTS) $(TEST_MAIN_OBJECT)
-	$(CC) $(LDFLAGS) $(TEST_MAIN_OBJECT) $(OBJECTS) $(TEST_OBJECTS) $(LIBS) -o $@
+	$(CC) $(LDTESTFLAGS) $(TEST_MAIN_OBJECT) $(OBJECTS) $(TEST_OBJECTS) $(LIBS) -o $@
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@

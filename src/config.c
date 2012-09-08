@@ -41,6 +41,12 @@ int config_init(Config *config, ShortSwitchDefinition *short_switches,
 }
 
 
+int config_free(Config *config)
+{
+    return 0; // TODO: result code - success
+}
+
+
 int config_process_args(Config *config, int argc, char* argv[],
                         SwitchProcessor processor, int *free_args)
 {
