@@ -115,6 +115,12 @@ int test_##test_name() \
         ++failed;\
     }
 
+#define TEST_NOT_IMPLEMENTED \
+    printf("%s%s:%d: Test not implemented for %s:%s!\n",\
+    (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+    __FILE__, __LINE__, suite, name);\
+    ++failed;\
+
 
 extern int g_signo;
 extern sigjmp_buf g_sig_env;

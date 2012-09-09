@@ -109,14 +109,13 @@ END_TEST
 
 START_TEST(config, config_parse_file)
 
-    *((int *)0) = 0; // SIGSEGV
-    TEST_TRUE(false);
+    TEST_NOT_IMPLEMENTED;
 
 END_TEST
 
 
 START_TEST(config, config_set_option)
 
-    TEST_TRUE(false);
+    TEST_NOT_IMPLEMENTED;
 
 END_TEST
