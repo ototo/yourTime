@@ -20,7 +20,7 @@
 #define CATCH_SIGNALS \
     setup_signal_handlers();\
     if (sigsetjmp(g_sig_env, 1)) {\
-         printf("%s%s:%d: Signal %d:%s caught in %s:%s, backtrace is:\n",\
+         printf("%s%s:%d: Signal %d:%s caught in %s:%s!\n Backtrace is:\n",\
              (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
             __FILE__, __LINE__, g_signo, signame(g_signo), suite, name);\
         void *array[BACKTRACE_SIZE];\
