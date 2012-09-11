@@ -8,7 +8,7 @@
 #define _XOPEN_SOURCE 600
 
 #include "test.h"
-#include "config.h"
+#include "../config.h"
 
 
 /* Test for initialization and uninitialization routines.

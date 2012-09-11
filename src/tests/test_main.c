@@ -13,7 +13,7 @@
 #include <sys/time.h>
 
 #include "test.h"
-#include "version.h"
+#include "../version.h"
 
 #include "test_forward_declarations.inc"
 
