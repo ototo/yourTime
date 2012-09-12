@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "error.h"
 #include "config.h"
 #include "commands.h"
 

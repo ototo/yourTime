@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "error.h"
 #include "buffer.h"
 
 
@@ -72,13 +73,13 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
 
     if (idx != target_page)
-        return -1; // TODO: YTE_OUT_OF_BOUNDS
+        return RC_E_OUT_OF_BOUNDS;
 
     *seek_page = target_page;
     *page = p;
     *page_offset = offset;
 
-    return 0; // TODO: YTE_OK
+    return RC_OK;
 }
 
 
@@ -106,13 +107,13 @@ int buffer_add_pages(Buffer **buffer, int pages,
     assert(buffer);
 
     if (!*buffer)
-        return -1; /* TODO: error code */
+        return RC_E_INVALID_ARGS;
 
     Buffer *buf = *buffer;
     if (!buf->page_size) {
         fprintf(stderr,
                 "%s - zero page size is a nonsense!\n", __func__);
-        return -1; // TODO: error code
+        return RC_E_INVALID_ARGS;
     }
 
     int page_size = buf->page_size;
@@ -120,7 +121,7 @@ int buffer_add_pages(Buffer **buffer, int pages,
     for (int page_nr = 0; page_nr < pages; ++page_nr) {
         BufferPage *page = malloc(sizeof(BufferPage) + page_size);
         if (!page)
-            return -1; // TODO: error code
+            return RC_E_OUT_OF_MEMORY;
 
         memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
 
@@ -134,7 +135,7 @@ int buffer_add_pages(Buffer **buffer, int pages,
     }
     // TODO: set used
 
-    return 0;
+    return RC_OK;
 }
 
 
@@ -157,7 +158,7 @@ int buffer_alloc(int page_size, Buffer **buffer)
 
     buf = (Buffer *)malloc(sizeof(Buffer));
     if (!buf)
-        return -1; /* TODO: error code */
+        return RC_E_OUT_OF_MEMORY;
 
     memset(buf, 0, sizeof(Buffer));
 
@@ -171,7 +172,7 @@ int buffer_alloc(int page_size, Buffer **buffer)
 
     *buffer = buf;
 
-    return 0;
+    return RC_OK;
 }
 
 
@@ -196,10 +197,10 @@ int buffer_append(Buffer **buffer, char *string, int size)
     assert(buffer);
 
     if (!*buffer)
-        return -1; /* TODO: error code */
+        return RC_E_INVALID_ARGS;
 
     if (!string || !size)
-        return 0;
+        return RC_OK;
 
     Buffer *buf = *buffer;
     int string_len = strlen(string);
@@ -227,7 +228,7 @@ int buffer_append(Buffer **buffer, char *string, int size)
         }
     }
 
-    return 0;
+    return RC_OK;
 }
 
 
@@ -236,14 +237,14 @@ int buffer_used(Buffer **buffer, int *used)
     assert(buffer);
 
     if (!used)
-        return -1; // TODO: result code - invalid argument
+        return RC_E_INVALID_ARGS;
 
     if (!*buffer)
         *used = 0;
     else
         *used = (*buffer)->used;
 
-    return 0;
+    return RC_OK;
 }
 
 
@@ -263,7 +264,7 @@ int buffer_get_as_string(Buffer **buffer, String *string)
 {
     assert(buffer);
 
-    return 0;
+    return RC_OK;
 }
 
 int buffer_free_string(char **string)
@@ -271,12 +272,12 @@ int buffer_free_string(char **string)
     assert(string);
 
     if (!*string)
-        return 0; // TODO: result code
+        return RC_OK;
 
     free(*string);
     *string = NULL;
 
-    return 0;
+    return RC_OK;
 }
 
 int buffer_trim(Buffer **buffer, int new_size)
@@ -284,9 +285,9 @@ int buffer_trim(Buffer **buffer, int new_size)
     assert(*buffer);
 
     if (!*buffer)
-        return -1; // TODO: error code
+        return RC_E_INVALID_ARGS;
 
-    return 0;
+    return RC_OK;
 }
 
 int buffer_free(Buffer **buffer)
@@ -294,7 +295,7 @@ int buffer_free(Buffer **buffer)
     assert(buffer);
 
     if (!*buffer)
-        return 0;
+        return RC_OK;
 
     BufferPage *current;
     BufferPage *page = (*buffer)->tail;
@@ -305,6 +306,6 @@ int buffer_free(Buffer **buffer)
     }
     free(buffer);
 
-    return 0;
+    return RC_OK;
 }
 

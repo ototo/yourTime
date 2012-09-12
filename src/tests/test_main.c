@@ -167,5 +167,5 @@ int main(int argc, char *argv[])
             ANSI_START_STATS_FAIL, failed, ANSI_STOP_STATS_FAIL,
             elapsed);
 
-    return 0;
+    return failed ? 1 : 0;
 }

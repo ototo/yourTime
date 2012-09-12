@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include "error.h"
 #include "version.h"
 #include "config.h"
 #include "buffer.h"
@@ -37,13 +38,13 @@ int config_init(Config *config, ShortSwitchDefinition *short_switches,
     // TODO: set user name
     // TODO: set user e-mail
 
-    return 0; // TODO: result code
+    return RC_OK;
 }
 
 
 int config_free(Config *config)
 {
-    return 0; // TODO: result code - success
+    return RC_OK;
 }
 
 
@@ -323,13 +324,13 @@ int config_parse_file(Config *config, char *config_file)
 {
     assert(config);
     if (!config_file || !*config_file)
-        return 0; // TODO: result code
+        return RC_E_INVALID_ARGS;
 
     FILE *f = fopen(config_file, "r");
     if (!f) {
         fprintf(stderr,
             "Error: Could not open config '%s'\n", config_file);
-        return -1; // TODO: result code
+        return RC_E_FILE_IO_ERROR;
     }
     char buf[CFG_BUFFER_SIZE];
     int state = STATE_NONE;
@@ -643,7 +644,7 @@ cleanup:
 exit:
     fclose(f);
 
-    return 0;
+    return RC_OK;
 }
 
 static
@@ -674,9 +675,9 @@ int config_set_option(Config *config, const String *name,
             rc = string_copy(str, value);
             if (rc)
                 return rc; // TODO: result code - unable to copy
-            return 0;
+            return RC_OK;
         }
     }
 
-    return -1; // TODO: result code - unknown option
+    return RC_OK;
 }

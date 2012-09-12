@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "error.h"
 #include "commands.h"
 
 static int cmd_status(Config *cfg, Database *db, int argc, char *argv[]);
@@ -79,7 +80,7 @@ int command_process_args(Config *cfg, Database *db, int argc, char *argv[])
     else
         fprintf(stderr, "No command specified while no default command "
                         "is defined. Nothing to do.\n");
-    return -1;
+    return RC_E_UNKNOWN_COMMAND;
 }
 
 
@@ -107,7 +108,7 @@ static int cmd_status(Config *cfg, Database *db, int argc, char *argv[])
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
     assert(cfg);
-    return 0;
+    return RC_OK;
 }
 
 static int cmd_start(Config *cfg, Database *db, int argc, char *argv[])
@@ -156,7 +157,7 @@ static int cmd_switch(Config *cfg, Database *db, int argc, char *argv[])
     if (cfg->verbosity > 5)
         printf("Entered %s\n", __func__);
     assert(cfg);
-    return 0;
+    return RC_OK;
 }
 
 static int cmd_stop(Config *cfg, Database *db, int argc, char *argv[])
@@ -164,6 +165,6 @@ static int cmd_stop(Config *cfg, Database *db, int argc, char *argv[])
     if (cfg->verbosity > 5)
         printf("Entered %s", __func__);
     assert(cfg);
-    return 0;
+    return RC_OK;
 }
 

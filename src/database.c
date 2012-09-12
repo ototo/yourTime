@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <sqlite.h>
 
+#include "error.h"
 #include "database.h"
 #include "buffer.h"
 #include "string.h"
@@ -95,20 +96,20 @@ int db_init(Database *db, Config *cfg)
     db->config = cfg;
     //db->file_name = cfg->database_file;
 
-    return 0;
+    return RC_OK;
 }
 
 int db_free(Database *db)
 {
     assert(db);
 
-    if (db->db) {
-        sqlite3_close(db->db);
-        db->db = 0;
-        return 0;
-    }
+    if (! db->db)
+        return RC_OK_NO_ACTION;
 
-    return -1;
+    sqlite3_close(db->db);
+    db->db = 0;
+
+    return RC_OK;
 }
 
 int db_open(Database *db, int mode)
@@ -215,28 +216,28 @@ error_cleanup:
 
 int db_update_schema(Database *db)
 {
-    return -1;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_check_schema(Database *db)
 {
 
-    return -1;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_start_activity(Database *db, int actvc, Activity **actvs)
 {
-    return -1;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_switch_activity(Database *db, int actvc, Activity **actvs)
 {
-    return -1;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_stop_activity(Database *db, int actvc, Activity **actvs)
 {
-    return -1;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_alloc_string(int chars, char **str)
@@ -245,16 +246,16 @@ int db_alloc_string(int chars, char **str)
     buffer = (char *)calloc(chars + 1, 1); /* adjust for '\0' */
 
     if (!buffer)
-        return -1; /* TODO: error code */
+        return RC_E_OUT_OF_MEMORY;
 
     *str = buffer;
 
-    return 0;
+    return RC_OK;
 }
 
 int db_append_string(char *source, int *chars, char **str)
 {
-    return 0;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_free_string(char **str)
@@ -262,7 +263,7 @@ int db_free_string(char **str)
     free(*str);
     *str = NULL;
 
-    return 0;
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 int db_alloc_activities(int actvc, Activity ***actvs)
@@ -271,7 +272,7 @@ int db_alloc_activities(int actvc, Activity ***actvs)
 
     buffer = calloc(actvc * (sizeof(Activity *) + sizeof(Activity)), 1);
     if (!buffer)
-        return -1; /* TODO: error code */
+        return RC_E_OUT_OF_MEMORY;
 
     for (int idx = 0; idx < actvc; ++idx)
         ((Activity **)buffer)[idx] = (Activity *)(buffer
@@ -279,7 +280,7 @@ int db_alloc_activities(int actvc, Activity ***actvs)
 
     *actvs = (Activity **)buffer;
 
-    return 0;
+    return RC_OK;
 }
 
 int db_free_activities(Activity ***actvs)
@@ -287,6 +288,6 @@ int db_free_activities(Activity ***actvs)
     free(*actvs);
     *actvs = NULL;
 
-    return 0;
+    return RC_OK;
 }
 
