@@ -63,7 +63,7 @@ $(OBJ_DIR)/%.o: %.c
 
 all: cli test
 
-version.h: vcsinfo.inc
+version.h: version.inc
 
 # include dependencies
 -include $(ALL_SOURCES:%.c=$(DEP_DIR)/%.P)
@@ -72,7 +72,7 @@ version.h: vcsinfo.inc
 cli: \
     $(OBJ_DIR)/.ts \
     $(DEP_DIR)/.ts \
-    vcsinfo.inc \
+    version.inc \
     $(ALL_SOURCES) $(EXECUTABLE)
 
 test_main.c: \
@@ -98,12 +98,16 @@ $(DEP_DIR)/$(TEST_DIR)/.ts:
 	touch $@
 
 # header with VCS related information
-vcsinfo.inc: ../.git/
+version.inc:
 	@echo "Generating $@..."
-	-@echo '/* VCS Information */' > $@
+	-@echo '/* Version Information */' > $@
 	-@echo '#define YOURTIME_VCS "$(VCSINFO)"' >> $@
 	-@echo '#define YOURTIME_REVISION "$(shell git rev-parse --short HEAD)"' >> $@
 	-@echo '#define YOURTIME_BRANCH "$(shell git branch | grep "*" | cut -d" " -f 2)"' >> $@
+	-@echo '#define YOURTIME_BUILD_TS "$(shell date +"%Y-%m-%d %H:%M %z")"' >> $@
+	-@echo '#define YOURTIME_BUILD_OS "$(shell uname -msvr)"' >> $@
+	-@echo '#define YOURTIME_BUILD_HOST "$(shell uname -n)"' >> $@
+
 
 $(EXECUTABLE): $(OBJECTS) $(MAIN_OBJECT)
 	$(CC) $(LDFLAGS) $(MAIN_OBJECT) $(OBJECTS) $(LIBS) -o $@
@@ -112,13 +116,15 @@ $(EXECUTABLE): $(OBJECTS) $(MAIN_OBJECT)
 -include $(ALL_TEST_SOURCES:%.c=$(DEP_DIR)/%.P)
 
 $(TEST_DIR)/tests.inc: $(TEST_SOURCES)
+	@echo "Generating $@..."
 	@grep START_TEST $(TEST_DIR)/test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/{"\1", "\2", test_\2},/' > $@
 
 $(TEST_DIR)/test_forward_declarations.inc: $(TEST_SOURCES)
+	@echo "Generating $@..."
 	@grep START_TEST $(TEST_DIR)/test_*.c | grep -v test_main.c | sed -e 's/.*START_TEST(//' -e 's/).*//' -e 's/ //' -e 's/\t//' -e 's/\(.*\),\(.*\)/int test_\2();/' > $@
 
 test_build: \
-    vcsinfo.inc \
+    version.inc \
     $(TEST_DIR)/tests.inc \
     $(TEST_DIR)/test_forward_declarations.inc \
     $(OBJ_DIR)/$(TEST_DIR)/.ts \
@@ -131,7 +137,7 @@ test_run: test_build $(LIST_OF_TESTS)
 clean:
 	-@(rm -f *.o 2>&1) > /dev/null
 	-@(rm -f yt tyt 2>&1) > /dev/null
-	-@(rm vcsinfo.inc 2>&1) > /dev/null
+	-@(rm version.inc 2>&1) > /dev/null
 	-@(rm $(TEST_DIR)/tests.inc 2>&1) > /dev/null
 	-@(rm $(TEST_DIR)/test_forward_declarations.inc 2>&1) > /dev/null
 	-@(rm $(TEST_REPORT) 2>&1) > /dev/null

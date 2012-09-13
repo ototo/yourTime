@@ -243,7 +243,7 @@ void print_version(Config* config)
         "%s v%s [%s/%s], compiled on %s\n",
          YOURTIME_FULL_NAME, YOURTIME_VERSION,
          YOURTIME_REVISION, YOURTIME_BRANCH,
-         YOURTIME_BUILD_TIMESTAMP);
+         YOURTIME_BUILD_TS);
 }
 
 void print_usage(Config* config)
