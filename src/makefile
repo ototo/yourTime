@@ -34,7 +34,8 @@ TEST_MAIN=$(TEST_DIR)/test_main.c
 TEST_SOURCES= \
     $(TEST_DIR)/test_string.c \
     $(TEST_DIR)/test_buffer.c \
-    $(TEST_DIR)/test_config.c
+    $(TEST_DIR)/test_config.c \
+    $(TEST_DIR)/test_database.c
 ALL_TEST_SOURCES=$(TEST_MAIN) $(TEST_SOURCES)
 TEST_OBJECTS=$(TEST_SOURCES:%.c=$(OBJ_DIR)/%.o)
 TEST_MAIN_OBJECT=$(TEST_MAIN:%.c=$(OBJ_DIR)/%.o)
