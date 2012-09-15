@@ -15,17 +15,17 @@
 
 int string_allocate(unsigned int size, String *new_string)
 {
-    if (!size)
+    if (!size || !new_string)
         return RC_E_INVALID_ARGS;
 
     char *str = malloc(size + 1);
 
     if (!str)
-        return RC_E_OUT_OF_BOUNDS;
+        return RC_E_OUT_OF_MEMORY;
 
     new_string->recycler = free;
     new_string->refcount = 1;
-    new_string->chars= str;
+    new_string->chars = str;
 
     return RC_OK;
 }

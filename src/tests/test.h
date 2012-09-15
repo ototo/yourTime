@@ -14,6 +14,8 @@
 #include <signal.h>
 #include <execinfo.h>
 
+#include "../error.h"
+
 
 #define BACKTRACE_SIZE 16
 
@@ -110,6 +112,14 @@ int test_##test_name() \
 #define TEST_EQUAL(expr1, expr2) \
     if ((expr1) != (expr2)) {\
         printf("%s%s:%d: Test for EQUAL in %s:%s has failed!\n",\
+        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, suite, name);\
+        ++failed;\
+    }
+
+#define TEST_NOT_EQUAL(expr1, expr2) \
+    if ((expr1) == (expr2)) {\
+        printf("%s%s:%d: Test for NOT EQUAL in %s:%s has failed!\n",\
         (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
         __FILE__, __LINE__, suite, name);\
         ++failed;\

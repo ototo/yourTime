@@ -17,7 +17,30 @@
 
 START_TEST(string, string_allocate)
 
-    TEST_NOT_IMPLEMENTED;
+    int rc = string_allocate(0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = string_allocate(1, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    String *str = 0x12345678;
+
+    rc = string_allocate(0, str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(str, 0x12345678);
+
+    str = NULL;
+    rc = string_allocate(256, str);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_NOT_EQUAL(str, NULL);
+    TEST_EQUAL(str->recycler, free);
+    TEST_EQUAL(str->refcount, 1);
+    TEST_NOT_EQUAL(str->chars, NULL);
+
+    rc = string_release(str);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(str->refcount, 0);
+    TEST_EQUAL(str->chars, NULL);
 
 END_TEST
 
