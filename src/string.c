@@ -26,18 +26,20 @@ int string_allocate(unsigned int size, String *new_string)
     new_string->recycler = free;
     new_string->refcount = 1;
     new_string->chars = str;
+    *new_string->chars = '\0';
 
     return RC_OK;
 }
 
-int string_allocate_static(char *string, String *new_string)
+int string_allocate_static(const char const *string,
+                           String *new_string)
 {
-    if (!string)
+    if (!string || !new_string)
         return RC_E_INVALID_ARGS;
 
     new_string->recycler = string_zero_recycler;
     new_string->refcount = 1;
-    new_string->chars = string;
+    new_string->chars = (char *)string;
 
     return RC_OK;
 }
@@ -47,14 +49,25 @@ int string_copy(String *to, const String *from)
     if (!from || !to)
         return RC_E_INVALID_ARGS;
 
+    if (to->chars && (!to->recycler || !to->refcount))
+        return RC_E_INVALID_STATE;
+
+    if (to->refcount > 1)
+        return RC_E_NOT_EXCLUSIVE;
+
+    int len = from->chars ? strlen(from->chars) + 1 : 0;
+    char *str = len ? malloc(len) : NULL;
+    if (len && !str)
+        return RC_E_OUT_OF_MEMORY;
+
+    if (str)
+        memcpy(str, from->chars, len);
+
     if (to->chars)
         to->recycler(to->chars);
-    int len = strlen(from->chars) + 1;
-    to->chars = malloc(len);
-    if (!to->chars)
-        return RC_E_OUT_OF_MEMORY;
-    memcpy(to->chars, from->chars, len);
-    to->recycler = free;
+
+    to->chars = str;
+    to->recycler = len ? free : string_zero_recycler;
 
     return RC_OK;
 }
@@ -64,13 +77,16 @@ int string_hold(String *string, int *new_ref)
     if (!string)
         return RC_E_INVALID_ARGS;
 
-    if (!string->chars)
-        return RC_E_INVALID_ARGS;
+    if (!string->chars || !string->refcount)
+        return RC_E_INVALID_STATE;
 
     if (string->refcount == STRING_REFCOUNT_MAX)
         return RC_OK_NO_ACTION;
 
-    string->refcount ++;
+    ++string->refcount;
+
+    if (new_ref)
+        *new_ref = string->refcount;
 
     return RC_OK;
 }
@@ -84,7 +100,8 @@ int string_release(String *string)
         return RC_E_INVALID_ARGS;
 
     if (! --string->refcount) {
-        string->recycler(string->chars);
+        if (string->recycler)
+            string->recycler(string->chars);
         string->chars = NULL;
     }
 

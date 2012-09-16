@@ -15,3 +15,5 @@
 #define RC_E_OUT_OF_MEMORY         -4
 #define RC_E_UNKNOWN_COMMAND       -5
 #define RC_E_FILE_IO_ERROR         -6
+#define RC_E_INVALID_STATE         -7
+#define RC_E_NOT_EXCLUSIVE         -8

@@ -19,12 +19,24 @@
 
 #define BACKTRACE_SIZE 16
 
+#define START_CATCHING_SIGNALS \
+    setup_signal_handlers();
+
+#define STOP_CATCHING_SIGNALS \
+    reset_signal_handlers();
+
+#define SIGNAL_MARK \
+    signal_line = __LINE__;
+
+#define RECATCH_SIGNALS \
+    }\
+    CATCH_SIGNALS
+
 #define CATCH_SIGNALS \
-    setup_signal_handlers();\
     if (sigsetjmp(g_sig_env, 1)) {\
          printf("%s%s:%d: Signal %d:%s caught in %s:%s!\n Backtrace is:\n",\
              (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, g_signo, signame(g_signo), suite, name);\
+            __FILE__, signal_line, g_signo, signame(g_signo), suite, name);\
         void *array[BACKTRACE_SIZE];\
         size_t size;\
         size = backtrace(array, BACKTRACE_SIZE);\
@@ -37,10 +49,8 @@
         }\
         free(symbols);\
         ++failed;\
-    }
-
-#define STOP_CATCHING_SIGNALS \
-    reset_signal_handlers();
+    }\
+    else {
 
 #define START_TEST(suite_name, test_name) \
 int test_##test_name() \
@@ -48,8 +58,9 @@ int test_##test_name() \
     char *suite = #suite_name;\
     char *name = #test_name;\
     int failed = 0;\
-    CATCH_SIGNALS\
-    else {
+    int signal_line = 0;\
+    START_CATCHING_SIGNALS\
+    CATCH_SIGNALS
 
 #define END_TEST \
     }\
