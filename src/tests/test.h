@@ -69,6 +69,7 @@ int test_##test_name() \
 }
 
 #ifdef USE_ANSI_CODES
+    #define ANSI_START_TEST "\033[2K\r"
     #define ANSI_START_FAIL "\033[u\033[37;41m"
     #define ANSI_STOP_FAIL "\033[0m"
     #define ANSI_START_OK "\033[u\033[30;42m"

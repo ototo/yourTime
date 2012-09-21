@@ -44,6 +44,20 @@ int string_allocate_static(const char const *string,
     return RC_OK;
 }
 
+int string_allocate_dynamic(const char const *string, String *new_string)
+{
+    int len = strlen(string);
+    String str;
+    int rc = string_allocate(len, &str);
+    if (rc != RC_OK)
+        return rc;
+
+    memcpy(str.chars, string, len + 1);
+    memcpy(new_string, &str, sizeof(*new_string));
+
+    return RC_OK;
+}
+
 int string_copy(String *to, const String *from)
 {
     if (!from || !to)
@@ -55,6 +69,12 @@ int string_copy(String *to, const String *from)
     if (to->refcount > 1)
         return RC_E_NOT_EXCLUSIVE;
 
+    if (to->refcount) {
+        int rc = string_release(to);
+        if (rc != RC_OK)
+            return rc;
+    }
+
     int len = from->chars ? strlen(from->chars) + 1 : 0;
     char *str = len ? malloc(len) : NULL;
     if (len && !str)
@@ -63,9 +83,7 @@ int string_copy(String *to, const String *from)
     if (str)
         memcpy(str, from->chars, len);
 
-    if (to->chars)
-        to->recycler(to->chars);
-
+    to->refcount = 1;
     to->chars = str;
     to->recycler = len ? free : string_zero_recycler;
 
@@ -100,8 +118,10 @@ int string_release(String *string)
         return RC_E_INVALID_ARGS;
 
     if (! --string->refcount) {
-        if (string->recycler)
+        if (string->recycler) {
             string->recycler(string->chars);
+            string->recycler = NULL;
+        }
         string->chars = NULL;
     }
 

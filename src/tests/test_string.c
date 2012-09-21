@@ -76,6 +76,17 @@ START_TEST(string, string_allocate_static)
 END_TEST
 
 
+/* Test for dynamic allocation routine.
+ *
+ */
+
+START_TEST(string, string_allocate_dynamic)
+
+    TEST_NOT_IMPLEMENTED
+
+END_TEST
+
+
 /* Test for deallocation routines.
  *
  */
@@ -120,31 +131,57 @@ END_TEST
 
 START_TEST(string, string_copy)
 
-    String from, from1, to;
-    memset(&from, 0, sizeof(from));
-    memset(&from1, 0, sizeof(from1));
+    String from_empty, from_static, from_dynamic, to;
+    memset(&from_empty, 0, sizeof(from_empty));
+    memset(&from_static, 0, sizeof(from_static));
+    memset(&from_dynamic, 0, sizeof(from_dynamic));
     memset(&to, 0, sizeof(to));
 
-    int rc = string_allocate_static(test_chars, &from);
+    int rc = string_allocate_static(test_chars, &from_static);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = string_allocate_dynamic(test_chars, &from_dynamic);
     TEST_EQUAL(rc, RC_OK);
 
     /* check for missing target */
     SIGNAL_MARK
-    rc = string_copy(NULL, &from);
+    rc = string_copy(NULL, &from_empty);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
-    /* chech for missing source */
+    /* check for missing source */
     SIGNAL_MARK
     rc = string_copy(&to, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
-    /* check for empty source */
+    /* check for static source */
     SIGNAL_MARK
-    rc = string_copy(&to, &from1);
+    rc = string_copy(&to, &from_static);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(to.refcount, 1);
-    TEST_EQUAL(to.chars, NULL);
-    TEST_EQUAL(to.recycler, string_zero_recycler);
+    TEST_NOT_EQUAL(to.chars, NULL);
+    TEST_EQUAL(to.recycler, free);
+
+    /* check for non-empty target with static allocation */
+    SIGNAL_MARK
+    rc = string_copy(&to, &from_empty);
+    TEST_EQUAL(rc, RC_OK);
+    char *ptr = to.chars;
+    rc = string_copy(&to, &from_empty);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(ptr, to.chars);
+
+    /* check for non-empty target with dynamic allocation */
+    SIGNAL_MARK
+
+    /* clean the target */
+    SIGNAL_MARK
+    rc = string_copy(&to, &from_dynamic);
+    TEST_EQUAL(rc, RC_OK);
+    ptr = to.chars;
+
+    rc = string_copy(&to, &from_empty);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_NOT_EQUAL(ptr, to.chars);
 
     TEST_NOT_IMPLEMENTED
 
