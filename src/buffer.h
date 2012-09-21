@@ -43,7 +43,7 @@ typedef struct _Buffer Buffer;
 
 
 int buffer_alloc(int page, Buffer **buffer);
-int buffer_append(Buffer **buffer, char *string, int size);
+int buffer_append(Buffer **buffer, const char *string, int size);
 int buffer_used(Buffer **buffer, int *used);
 int buffer_get_as_string(Buffer **buffer, String *string);
 int buffer_free_string(char **string);

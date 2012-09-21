@@ -13,7 +13,8 @@
 #include "../string.h"
 
 
-const char const *test_chars = "test chars";
+/* test data */
+static const char const *test_chars = "test chars";
 
 /* Test for allocation routine.
  *

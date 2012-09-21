@@ -192,11 +192,9 @@ int buffer_alloc(int page_size, Buffer **buffer)
  *   YTE_OUT_OF_MEMORY  when there is no memory available.
  */
 
-int buffer_append(Buffer **buffer, char *string, int size)
+int buffer_append(Buffer **buffer, const char *string, int size)
 {
-    assert(buffer);
-
-    if (!*buffer)
+    if (!buffer || !*buffer)
         return RC_E_INVALID_ARGS;
 
     if (!string || !size)
@@ -207,7 +205,7 @@ int buffer_append(Buffer **buffer, char *string, int size)
     int left_to_append = (size > 0)
                        ? ((size < string_len) ? size : string_len)
                        : string_len;
-    char *chars_to_append = string;
+    const char *chars_to_append = string;
 
     while (left_to_append) {
         BufferPage *head = buf->head;
@@ -234,9 +232,7 @@ int buffer_append(Buffer **buffer, char *string, int size)
 
 int buffer_used(Buffer **buffer, int *used)
 {
-    assert(buffer);
-
-    if (!used)
+    if (!buffer || !used)
         return RC_E_INVALID_ARGS;
 
     if (!*buffer)
@@ -292,7 +288,8 @@ int buffer_trim(Buffer **buffer, int new_size)
 
 int buffer_free(Buffer **buffer)
 {
-    assert(buffer);
+    if (!buffer)
+        return RC_E_INVALID_ARGS;
 
     if (!*buffer)
         return RC_OK;
@@ -304,7 +301,8 @@ int buffer_free(Buffer **buffer)
         page = page->next;
         free(current);
     }
-    free(buffer);
+    free(*buffer);
+    *buffer = NULL;
 
     return RC_OK;
 }

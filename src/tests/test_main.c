@@ -121,12 +121,21 @@ char *get_bar_string(int total, int failed)
 }
 
 
+TestRecord tests[] = {
+    #include "tests.inc"
+    { NULL, NULL, NULL }
+};
+
 int main(int argc, char *argv[])
 {
-    TestRecord tests[] = {
-        #include "tests.inc"
-        { NULL, NULL, NULL }
-    };
+    char *suite_name = NULL;
+    char *test_name = NULL;
+
+    if (argc > 1)
+        suite_name = argv[1];
+
+    if (argc > 2)
+        test_name = argv[2];
 
     printf("Running tests for %s v%s [%s/%s]:\n\n",
             YOURTIME_FULL_NAME, YOURTIME_VERSION,
@@ -141,6 +150,13 @@ int main(int argc, char *argv[])
     gettimeofday(&tv_start, NULL);
 
     for(TestRecord *test = tests; test->function; ++test) {
+
+        if (suite_name && strcmp(suite_name, test->suite_name))
+            continue;
+
+        if (test_name && strcmp(test_name, test->test_name))
+            continue;
+
         printf(
 #ifdef USE_ANSI_CODES
             ANSI_START_TEST "[" ANSI_STORE "....] %s:%s "

@@ -10,13 +10,32 @@
 #include "test.h"
 #include "../buffer.h"
 
+/* data for tests */
+static const char const *test_chars = "test chars";
+static int test_chars_len = sizeof(test_chars) - 1;
+
 /* Test for allocation routine.
  *
  */
 
 START_TEST(buffer, buffer_alloc)
 
-    TEST_NOT_IMPLEMENTED;
+    Buffer *buf;
+
+    SIGNAL_MARK;
+    int rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_NOT_EQUAL(buf, NULL);
+    TEST_EQUAL(buf->page_size, 16);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 16);
+    TEST_NOT_EQUAL(buf->head, NULL);
+    TEST_EQUAL(buf->head, buf->tail);
+
+    SIGNAL_MARK;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -27,7 +46,8 @@ END_TEST
 
 START_TEST(buffer, buffer_append)
 
-    TEST_NOT_IMPLEMENTED;
+    int rc = buffer_append(NULL, NULL, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
 END_TEST
 
@@ -38,7 +58,42 @@ END_TEST
 
 START_TEST(buffer, buffer_used)
 
-    TEST_NOT_IMPLEMENTED;
+    int rc = buffer_used(NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    int used = -1;
+    rc = buffer_used(NULL, &used);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(used, -1);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_used(&buf, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_used(&buf, &used);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(used, 0);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+
+    used = -1;
+    rc = buffer_used(&buf, &used);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(used, 0);
+
+    SIGNAL_MARK;
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len);
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -93,7 +148,23 @@ END_TEST
 
 START_TEST(buffer, buffer_free)
 
-    TEST_NOT_IMPLEMENTED;
+    SIGNAL_MARK;
+    int rc = buffer_free(NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_NOT_EQUAL(buf, NULL);
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
