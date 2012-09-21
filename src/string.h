@@ -26,7 +26,7 @@ struct _String
 typedef struct _String String;
 
 int string_allocate(unsigned int size, String *new_string);
-int string_allocate_dynamic(const char const *string, String *new_string);
+int string_allocate_dynamic(const char const *chars, String *string);
 int string_allocate_static(const char const *string,
                            String *new_string);
 int string_copy(String *to, const String *from);

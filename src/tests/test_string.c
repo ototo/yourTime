@@ -82,7 +82,31 @@ END_TEST
 
 START_TEST(string, string_allocate_dynamic)
 
-    TEST_NOT_IMPLEMENTED
+    int rc = string_allocate_dynamic(NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK
+    rc = string_allocate_dynamic(test_chars, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK
+    String str;
+    rc = string_allocate_dynamic(NULL, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK
+    rc = string_allocate_dynamic(test_chars, &str);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(str.recycler, free);
+    TEST_EQUAL(str.refcount, 1);
+    TEST_NOT_EQUAL(str.chars, NULL);
+    TEST_TRUE(strcmp(test_chars, str.chars) == 0);
+
+    SIGNAL_MARK
+    rc = string_release(&str);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(str.refcount, 0);
+    TEST_EQUAL(str.chars, NULL);
 
 END_TEST
 
@@ -172,9 +196,6 @@ START_TEST(string, string_copy)
 
     /* check for non-empty target with dynamic allocation */
     SIGNAL_MARK
-
-    /* clean the target */
-    SIGNAL_MARK
     rc = string_copy(&to, &from_dynamic);
     TEST_EQUAL(rc, RC_OK);
     ptr = to.chars;
@@ -182,8 +203,6 @@ START_TEST(string, string_copy)
     rc = string_copy(&to, &from_empty);
     TEST_EQUAL(rc, RC_OK);
     TEST_NOT_EQUAL(ptr, to.chars);
-
-    TEST_NOT_IMPLEMENTED
 
 END_TEST
 

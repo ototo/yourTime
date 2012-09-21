@@ -58,7 +58,7 @@ int test_##test_name() \
     char *suite = #suite_name;\
     char *name = #test_name;\
     int failed = 0;\
-    int signal_line = 0;\
+    int signal_line = __LINE__;\
     START_CATCHING_SIGNALS\
     CATCH_SIGNALS
 

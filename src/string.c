@@ -44,16 +44,19 @@ int string_allocate_static(const char const *string,
     return RC_OK;
 }
 
-int string_allocate_dynamic(const char const *string, String *new_string)
+int string_allocate_dynamic(const char const *chars, String *string)
 {
-    int len = strlen(string);
+    if (!chars || !string)
+        return RC_E_INVALID_ARGS;
+
+    int len = strlen(chars);
     String str;
     int rc = string_allocate(len, &str);
     if (rc != RC_OK)
         return rc;
 
-    memcpy(str.chars, string, len + 1);
-    memcpy(new_string, &str, sizeof(*new_string));
+    memcpy(str.chars, chars, len + 1);
+    memcpy(string, &str, sizeof(*string));
 
     return RC_OK;
 }
