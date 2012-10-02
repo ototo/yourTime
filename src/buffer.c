@@ -22,24 +22,27 @@
  * Parameters:
  *   @buffer         [in] buffer to seek;
  *   @seek_mode      [in] seek mode;
- *   @seek_offset    [in] offset (global or in-page depending on seek_type);
- *   @seek_page      [in/out] page number to seek to (for page+offset mode);
- *                            updated after a successfull seek;
+ *   @seek_offset    [in] offset (global or in-page depending on
+ *                   seek_type);
+ *   @seek_page      [in/out] page number to seek to (for page+offset
+ *                   mode); updated after a successfull seek if not
+ *                   NULL;
  *   @page           [out] page structure found or NULL if not;
  *   @page_offset    [out] intra-page offset after seek.
  *
  * Returns:
- *   YTE_OK              for success;
- *   YTE_OUT_OF_BOUNDS   when buffer is smaller then the seek
- *                       requested;
- *   YTE_CORRUPTION      when data integrity is broken.
+ *   RC_E_OK                for success;
+ *   RC_E_OUT_OF_BOUNDS     when buffer is smaller then the seek
+ *                          is requested;
+ *   RC_E_CORRUPTION        when data integrity is broken.
  */
 
 int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
                    BufferPage **page, int *page_offset)
 {
-    assert(buffer);
+    if (!buffer)
+        return RC_E_INVALID_ARGS;
 
     int target_page;
     int offset;
@@ -49,12 +52,16 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     switch (seek_mode)
     {
     case BUF_SEEK_PAGE_OFFSET:
+        if (!seek_page)
+            return RC_E_INVALID_ARGS;
         target_page = *seek_page;
         offset = seek_offset;
         break;
+
     case BUF_SEEK_PAGE_REL_OFFSET:
         // TODO: implement
         break;
+
     case BUF_SEEK_BUFFER_OFFSET:
         {
             div_t q = div(seek_offset, buf->page_size);
@@ -62,6 +69,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
             offset = q.rem;
         }
         break;
+
     case BUF_SEEK_BUFFER_REL_OFFSET:
         // TODO: implement
         break;
@@ -75,9 +83,12 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     if (idx != target_page)
         return RC_E_OUT_OF_BOUNDS;
 
-    *seek_page = target_page;
-    *page = p;
-    *page_offset = offset;
+    if (seek_page)
+        *seek_page = target_page;
+    if (page)
+        *page = p;
+    if (page_offset)
+        *page_offset = offset;
 
     return RC_OK;
 }
@@ -95,26 +106,21 @@ int buffer_seek(Buffer **buffer, int seek_mode,
  *   @zero_data     [in] zero newly allocated pages if != 0.
  *
  * Returns:
- *   YTE_OK             for success;
- *   YTE_OUT_OF_MEMORY  when there is no memory available;
- *   YTE_CORRUPTION     when data integrity is broken.
+ *   RC_E_OK                for success;
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available;
+ *   RC_E_CORRUPTION        when data integrity is broken.
  */
 
 static
 int buffer_add_pages(Buffer **buffer, int pages,
                         int used, int zero_data)
 {
-    assert(buffer);
-
-    if (!*buffer)
+    if (!buffer && !*buffer)
         return RC_E_INVALID_ARGS;
 
     Buffer *buf = *buffer;
-    if (!buf->page_size) {
-        fprintf(stderr,
-                "%s - zero page size is a nonsense!\n", __func__);
-        return RC_E_INVALID_ARGS;
-    }
+    if (!buf->page_size)
+        return RC_E_INVALID_STATE;
 
     int page_size = buf->page_size;
 
@@ -128,12 +134,27 @@ int buffer_add_pages(Buffer **buffer, int pages,
         if (!buf->head)
             buf->tail = page;
         else
-            buf->head->next = page;
+            page->next = buf->head;
+        buf->head = page;
         buf->pages += 1;
         buf->size += buf->page_size;
-        buf->head = page;
     }
-    // TODO: set used
+
+    if (used < 0)
+        return RC_OK;
+
+    // TODO: seek to the right page/offset
+    BufferPage *page = NULL;
+    int page_offset = -1;
+
+    int rc = buffer_seek(buffer, BUF_SEEK_BUFFER_OFFSET,
+                         used, NULL, &page, &page_offset);
+    if (rc != RC_OK)
+        return rc;
+
+    buf->used = used;
+    buf->tip = page;
+    buf->tip_page_used = page_offset;
 
     return RC_OK;
 }
@@ -148,8 +169,8 @@ int buffer_add_pages(Buffer **buffer, int pages,
  *   @buffer        [out] newly allocated buffer.
  *
  * Returns:
- *   YTE_OK             on success;
- *   YTE_OUT_OF_MEMORY  when there is no memory available.
+ *   RC_E_OK                on success;
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
 
 int buffer_alloc(int page_size, Buffer **buffer)
@@ -187,9 +208,9 @@ int buffer_alloc(int page_size, Buffer **buffer)
  *                       if negative, then till zero terminator.
  *
  * Returns:
- *   YTE_OK             on success;
- *   YTE_ARGUMENTS      invalid arguments are provided;
- *   YTE_OUT_OF_MEMORY  when there is no memory available.
+ *   RC_E_OK                on success;
+ *   RC_E_ARGUMENTS         invalid arguments are provided;
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
 
 int buffer_append(Buffer **buffer, const char *string, int size)
@@ -202,9 +223,7 @@ int buffer_append(Buffer **buffer, const char *string, int size)
 
     Buffer *buf = *buffer;
     int string_len = strlen(string);
-    int left_to_append = (size > 0)
-                       ? ((size < string_len) ? size : string_len)
-                       : string_len;
+    int left_to_append = (size > 0) ? size : string_len;
     const char *chars_to_append = string;
 
     while (left_to_append) {
@@ -253,25 +272,16 @@ int buffer_used(Buffer **buffer, int *used)
  *   @string        [out] String containing buffer data.
  *
  * Returns:
- *   YTE_OK             on success;
+ *   RC_OK          on success;
  */
 
-int buffer_get_as_string(Buffer **buffer, String *string)
+int buffer_get_as_string(Buffer **buffer, String **string)
 {
-    assert(buffer);
+    if (!buffer || !string)
+        return RC_E_INVALID_ARGS;
 
-    return RC_OK;
-}
-
-int buffer_free_string(char **string)
-{
-    assert(string);
-
-    if (!*string)
-        return RC_OK;
-
-    free(*string);
-    *string = NULL;
+    if (!*buffer)
+        return RC_E_INVALID_STATE;
 
     return RC_OK;
 }

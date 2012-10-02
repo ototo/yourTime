@@ -107,7 +107,8 @@ int test_##test_name() \
 
 #define TEST_TRUE(expr) \
     if (!(expr)) {\
-        printf("%s%s:%d: Test for TRUE in %s:%s has failed!\n",\
+        printf("%s%s:%d: Test for TRUE(" #expr\
+                ") in %s:%s has failed!\n",\
         (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
         __FILE__, __LINE__, suite, name);\
         ++failed;\
@@ -115,7 +116,8 @@ int test_##test_name() \
 
 #define TEST_FALSE(expr) \
     if ((expr)) {\
-        printf("%s%s:%d: Test for FALSE in %s:%s has failed!\n",\
+        printf("%s%s:%d: Test for FALSE(" #expr\
+                ") in %s:%s has failed!\n",\
         (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
         __FILE__, __LINE__, suite, name);\
         ++failed;\
@@ -123,7 +125,8 @@ int test_##test_name() \
 
 #define TEST_EQUAL(expr1, expr2) \
     if ((expr1) != (expr2)) {\
-        printf("%s%s:%d: Test for EQUAL in %s:%s has failed!\n",\
+        printf("%s%s:%d: Test for EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
         (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
         __FILE__, __LINE__, suite, name);\
         ++failed;\
@@ -131,7 +134,8 @@ int test_##test_name() \
 
 #define TEST_NOT_EQUAL(expr1, expr2) \
     if ((expr1) == (expr2)) {\
-        printf("%s%s:%d: Test for NOT EQUAL in %s:%s has failed!\n",\
+        printf("%s%s:%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
         (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
         __FILE__, __LINE__, suite, name);\
         ++failed;\

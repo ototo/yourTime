@@ -7,8 +7,11 @@
 
 #define _XOPEN_SOURCE 600
 
+#include <string.h>
+
 #include "test.h"
 #include "../buffer.h"
+
 
 /* data for tests */
 static const char const *test_chars = "test chars";
@@ -48,6 +51,43 @@ START_TEST(buffer, buffer_append)
 
     int rc = buffer_append(NULL, NULL, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_append(NULL, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    rc = buffer_append(&buf, NULL, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, 0);
+    rc = buffer_append(&buf, test_chars, 0);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, 0);
+
+    SIGNAL_MARK;
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len);
+    TEST_EQUAL(buf->size, buf->page_size);
+    TEST_EQUAL(buf->pages, 1);
+
+    SIGNAL_MARK;
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len * 2);
+    TEST_EQUAL(buf->size, buf->page_size * 2);
+    printf("size: %d\n",  buf->size);
+    TEST_EQUAL(buf->pages, 2);
+    printf("pages: %d\n",  buf->pages);
+    // TODO: complete
+
 
 END_TEST
 
@@ -104,18 +144,37 @@ END_TEST
 
 START_TEST(buffer, buffer_get_as_string)
 
-    TEST_NOT_IMPLEMENTED;
+    int rc = buffer_get_as_string(NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
-END_TEST
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_get_as_string(&buf, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    String *str = NULL;
+    rc = buffer_get_as_string(NULL, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_get_as_string(&buf, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_STATE);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 16);
+    rc = buffer_get_as_string(&buf, &str);
+    TEST_EQUAL(rc, RC_OK);
 
 
-/* Test for string deallocation routine.
- *
- */
+    // TODO: complete
 
-START_TEST(buffer, buffer_free_string)
-
-    TEST_NOT_IMPLEMENTED;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 

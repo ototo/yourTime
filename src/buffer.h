@@ -32,7 +32,6 @@ struct _Buffer
     int         size;               /* allocated total size (all pages) */
     int         used;               /* total used size */
     int         tip_page_used;      /* used on the tip page */
-    int         tip_page_offset;    /* to the first unused byte */
     BufferPage  *head;              /* most recently added page */
     BufferPage  *tail;              /* the oldest page */
     BufferPage  *tip;               /* the page containing the next free
@@ -45,8 +44,7 @@ typedef struct _Buffer Buffer;
 int buffer_alloc(int page, Buffer **buffer);
 int buffer_append(Buffer **buffer, const char *string, int size);
 int buffer_used(Buffer **buffer, int *used);
-int buffer_get_as_string(Buffer **buffer, String *string);
-int buffer_free_string(char **string);
+int buffer_get_as_string(Buffer **buffer, String **string);
 int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
                    BufferPage **page, int *page_offset);

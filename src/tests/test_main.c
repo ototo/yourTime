@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
             "- %s:%s ... "
 #endif
             ,test->suite_name, test->test_name);
+        fflush(stdout);
         rc = test->function();
         fflush(stdout);
         if (rc) {
