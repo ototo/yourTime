@@ -21,7 +21,7 @@ typedef struct _BufferPage BufferPage;
 
 struct _BufferPage
 {
-    BufferPage  *next;      /* next page */
+    BufferPage  *next;      /* next page moving from head to tail */
     char        data[];     /* data buffer itself */
 };
 
@@ -32,10 +32,10 @@ struct _Buffer
     int         size;               /* allocated total size (all pages) */
     int         used;               /* total used size */
     int         tip_page_used;      /* used on the tip page */
-    BufferPage  *head;              /* most recently added page */
-    BufferPage  *tail;              /* the oldest page */
-    BufferPage  *tip;               /* the page containing the next free
-                                       byte */
+    BufferPage  *head;              /* the oldest page */
+    BufferPage  *tail;              /* most recently added page */
+    BufferPage  *tip;               /* the page containing the byte,
+                                       referred by the @used parameter */
 };
 
 typedef struct _Buffer Buffer;

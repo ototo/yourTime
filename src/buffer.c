@@ -75,7 +75,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
         break;
     }
 
-    BufferPage *p = buf->tail;
+    BufferPage *p = buf->head;
     int idx;
 
     for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
@@ -132,18 +132,20 @@ int buffer_add_pages(Buffer **buffer, int pages,
         memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
 
         if (!buf->head)
-            buf->tail = page;
+            buf->head = page;
         else
-            page->next = buf->head;
-        buf->head = page;
+            buf->tail->next = page;
+        buf->tail = page;
         buf->pages += 1;
         buf->size += buf->page_size;
     }
 
+    buf->tip = buf->tail;
+    buf->tip_page_used = 0;
+
     if (used < 0)
         return RC_OK;
 
-    // TODO: seek to the right page/offset
     BufferPage *page = NULL;
     int page_offset = -1;
 
@@ -188,7 +190,7 @@ int buffer_alloc(int page_size, Buffer **buffer)
     int rc = buffer_add_pages(&buf, 1, 0, 0);
     if (rc) {
         free(buf);
-        return rc; // TODO: report error
+        return rc;
     }
 
     *buffer = buf;
@@ -223,7 +225,7 @@ int buffer_append(Buffer **buffer, const char *string, int size)
 
     Buffer *buf = *buffer;
     int string_len = strlen(string);
-    int left_to_append = (size > 0) ? size : string_len;
+    int left_to_append = (size > 0) ? size : strlen(string);
     const char *chars_to_append = string;
 
     while (left_to_append) {
@@ -237,7 +239,7 @@ int buffer_append(Buffer **buffer, const char *string, int size)
             int to_copy = (available < left_to_append)
                         ? available
                         : left_to_append;
-            memcpy(head->data, chars_to_append, to_copy);
+            memcpy(head->data + buf->tip_page_used, chars_to_append, to_copy);
             left_to_append -= to_copy;
             chars_to_append += to_copy;
             buf->tip_page_used += to_copy;
@@ -305,7 +307,7 @@ int buffer_free(Buffer **buffer)
         return RC_OK;
 
     BufferPage *current;
-    BufferPage *page = (*buffer)->tail;
+    BufferPage *page = (*buffer)->head;
     while (page) {
         current = page;
         page = page->next;

@@ -14,8 +14,9 @@
 
 
 /* data for tests */
-static const char const *test_chars = "test chars";
-static int test_chars_len = sizeof(test_chars) - 1;
+#define TEST_DATA_STRING "test chars"
+static const char const *test_chars = TEST_DATA_STRING;
+static int test_chars_len = sizeof(TEST_DATA_STRING) - 1;
 
 /* Test for allocation routine.
  *
@@ -83,9 +84,7 @@ START_TEST(buffer, buffer_append)
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->used, test_chars_len * 2);
     TEST_EQUAL(buf->size, buf->page_size * 2);
-    printf("size: %d\n",  buf->size);
     TEST_EQUAL(buf->pages, 2);
-    printf("pages: %d\n",  buf->pages);
     // TODO: complete
 
 
