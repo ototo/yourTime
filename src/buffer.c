@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "error.h"
+#include "string.h"
 #include "buffer.h"
 
 
@@ -140,8 +141,16 @@ int buffer_add_pages(Buffer **buffer, int pages,
         buf->size += buf->page_size;
     }
 
-    buf->tip = buf->tail;
-    buf->tip_page_used = 0;
+    if (!buf->tip)
+        buf->tip = buf->head;
+
+    // when adding pages need to adjust the tip pointer as it points to
+    // the next available byte in the buffer (except for the case, when
+    // all the allocated pages are used up).
+    if (buf->tip_page_used >= buf->page_size) {
+        buf->tip = buf->tip->next;
+        buf->tip_page_used = 0;
+    }
 
     if (used < 0)
         return RC_OK;
@@ -224,22 +233,27 @@ int buffer_append(Buffer **buffer, const char *string, int size)
         return RC_OK;
 
     Buffer *buf = *buffer;
-    int string_len = strlen(string);
     int left_to_append = (size > 0) ? size : strlen(string);
     const char *chars_to_append = string;
 
     while (left_to_append) {
-        BufferPage *head = buf->head;
-        if (!head || (buf->tip_page_used == buf->page_size)) {
+        if (!buf->head || (buf->used == buf->size)) {
             buffer_add_pages(buffer, 1, -1, 0);
             continue;
         }
         else {
+            if (buf->tip_page_used == buf->page_size) {
+                if (!buf->tip->next)
+                    return RC_E_INVALID_STATE;
+                else
+                    buf->tip = buf->tip->next;
+            }
+
             int available = buf->page_size - buf->tip_page_used;
             int to_copy = (available < left_to_append)
                         ? available
                         : left_to_append;
-            memcpy(head->data + buf->tip_page_used, chars_to_append, to_copy);
+            memcpy(buf->tip->data + buf->tip_page_used, chars_to_append, to_copy);
             left_to_append -= to_copy;
             chars_to_append += to_copy;
             buf->tip_page_used += to_copy;
@@ -277,13 +291,44 @@ int buffer_used(Buffer **buffer, int *used)
  *   RC_OK          on success;
  */
 
-int buffer_get_as_string(Buffer **buffer, String **string)
+int buffer_get_as_string(Buffer **buffer, String *string)
 {
     if (!buffer || !string)
         return RC_E_INVALID_ARGS;
 
     if (!*buffer)
         return RC_E_INVALID_STATE;
+
+    if (!(*buffer)->used) {
+        String str;
+        int rc = string_allocate_static("", &str);
+        if (rc != RC_OK)
+            return rc;
+        *string = str;
+        return RC_OK;
+    }
+
+    String str;
+    int rc = string_allocate((*buffer)->used, &str);
+    if (rc != RC_OK)
+        return rc;
+
+    int page_size = (*buffer)->page_size;
+    BufferPage *last = (*buffer)->tip;
+    char *to = str.chars;
+
+    for (BufferPage *page = (*buffer)->head; page; page = page->next) {
+        if (page == last) {
+            memcpy(to, page->data, (*buffer)->tip_page_used);
+            to += (*buffer)->tip_page_used;
+        }
+        else {
+            memcpy(to, page->data, page_size);
+            to += page_size;
+        }
+    }
+    *to = '\0';
+    *string = str;
 
     return RC_OK;
 }

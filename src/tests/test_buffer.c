@@ -152,7 +152,7 @@ START_TEST(buffer, buffer_get_as_string)
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK;
-    String *str = NULL;
+    String str;
     rc = buffer_get_as_string(NULL, &str);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
@@ -165,12 +165,30 @@ START_TEST(buffer, buffer_get_as_string)
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->pages, 1);
     TEST_EQUAL(buf->size, 16);
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    rc = buffer_append(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
     rc = buffer_get_as_string(&buf, &str);
     TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(0, strcmp(str.chars, TEST_DATA_STRING TEST_DATA_STRING));
+    rc = string_release(&str);
+    TEST_EQUAL(rc, RC_OK);
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
-
-    // TODO: complete
-
+    SIGNAL_MARK;
+    rc = buffer_alloc(3, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 3);
+    div_t r = div(test_chars_len * 16, 3);
+    for (int i = 0; i < 16; ++i) {
+        rc = buffer_append(&buf, test_chars, test_chars_len);
+        TEST_EQUAL(rc, RC_OK);
+    }
+    TEST_EQUAL(buf->pages, r.quot + (r.rem ? 1 : 0));
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);

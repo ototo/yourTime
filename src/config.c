@@ -351,8 +351,8 @@ int config_parse_file(Config *config, char *config_file)
     char *end_buf = buf + CFG_BUFFER_SIZE - 1;
     char *pch = buf;
     char ch;
-    String *name;
-    String *value;
+    String name;
+    String value;
     uint16_t eols = 0;
 
 #define EOL_PAIR(first, second) \
