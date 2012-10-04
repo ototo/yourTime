@@ -30,6 +30,8 @@ OBJECTS=$(SOURCES:%.c=$(OBJ_DIR)/%.o)
 MAIN_OBJECT=$(MAIN:%.c=$(OBJ_DIR)/%.o)
 
 TEST_DIR=tests
+TEST_SUITE_NAME_FILE=.test_suite_name
+TEST_NAME_FILE=.test_name
 TEST_MAIN=$(TEST_DIR)/test_main.c
 TEST_SOURCES= \
     $(TEST_DIR)/test_string.c \
@@ -40,6 +42,12 @@ ALL_TEST_SOURCES=$(TEST_MAIN) $(TEST_SOURCES)
 TEST_OBJECTS=$(TEST_SOURCES:%.c=$(OBJ_DIR)/%.o)
 TEST_MAIN_OBJECT=$(TEST_MAIN:%.c=$(OBJ_DIR)/%.o)
 TEST_REPORT=test_report
+
+# allow limiting the set of tests being run:
+# $(TEST_SUITE_NAME_FILE) contains the name of the test suite to run
+# $(TEST_NAME_FILE) contains the name of the test to run
+TEST_SUITE_NAME=$(shell if [ -e $(TEST_SUITE_NAME_FILE) ] ; then cat $(TEST_SUITE_NAME_FILE) ; else echo "" ; fi)
+TEST_NAME=$(shell if [ -e $(TEST_NAME_FILE) ] ; then cat $(TEST_NAME_FILE) ; else echo "" ; fi)
 
 LIBS=-lsqlite3
 EXECUTABLE=yt
@@ -133,7 +141,7 @@ test_build: \
 	$(ALL_TEST_SOURCES) $(TEST_EXECUTABLE)
 
 test_run: test_build $(LIST_OF_TESTS)
-	./$(TEST_EXECUTABLE) 2>$(TEST_REPORT)
+	./$(TEST_EXECUTABLE) $(TEST_SUITE_NAME) $(TEST_NAME) 2>$(TEST_REPORT)
 
 clean:
 	-@(rm -f *.o 2>&1) > /dev/null

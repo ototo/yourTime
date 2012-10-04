@@ -7,3 +7,5 @@ tests.inc
 test_forward_declarations.inc
 .deps/*
 .objs/*
+.test_suite_name
+.test_name
