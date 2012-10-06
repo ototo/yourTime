@@ -24,19 +24,62 @@ static int test_chars_len = sizeof(TEST_DATA_STRING) - 1;
 
 START_TEST(buffer, buffer_alloc)
 
-    Buffer *buf;
+    int rc = buffer_alloc(NULL, 16);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK;
-    int rc = buffer_alloc(16, &buf);
+    Buffer *buf;
+
+    rc = buffer_alloc(&buf, 16);
     TEST_EQUAL(rc, RC_OK);
     TEST_NOT_EQUAL(buf, NULL);
     TEST_EQUAL(buf->page_size, 16);
     TEST_EQUAL(buf->pages, 1);
     TEST_EQUAL(buf->size, 16);
+    TEST_EQUAL(buf->tip_offset, 0);
     TEST_NOT_EQUAL(buf->head, NULL);
     TEST_EQUAL(buf->head, buf->tail);
+    TEST_EQUAL(buf->head, buf->tip);
 
     SIGNAL_MARK;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
+
+END_TEST
+
+
+/* Test for resizing routine.
+ *
+ */
+
+START_TEST(buffer, buffer_resize)
+
+    TEST_NOT_IMPLEMENTED;
+
+END_TEST
+
+
+/* Test for deallocation routine.
+ *
+ */
+
+START_TEST(buffer, buffer_free)
+
+    SIGNAL_MARK;
+    int rc = buffer_free(NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_NOT_EQUAL(buf, NULL);
+
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -63,7 +106,7 @@ START_TEST(buffer, buffer_append)
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK;
-    rc = buffer_alloc(16, &buf);
+    rc = buffer_alloc(&buf, 16);
     TEST_EQUAL(rc, RC_OK);
     rc = buffer_append(&buf, NULL, test_chars_len);
     TEST_EQUAL(rc, RC_OK);
@@ -117,7 +160,7 @@ START_TEST(buffer, buffer_used)
     TEST_EQUAL(used, 0);
 
     SIGNAL_MARK;
-    rc = buffer_alloc(16, &buf);
+    rc = buffer_alloc(&buf, 16);
     TEST_EQUAL(rc, RC_OK);
 
     used = -1;
@@ -161,7 +204,7 @@ START_TEST(buffer, buffer_get_as_string)
     TEST_EQUAL(rc, RC_E_INVALID_STATE);
 
     SIGNAL_MARK;
-    rc = buffer_alloc(16, &buf);
+    rc = buffer_alloc(&buf, 16);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->pages, 1);
     TEST_EQUAL(buf->size, 16);
@@ -179,7 +222,7 @@ START_TEST(buffer, buffer_get_as_string)
     TEST_EQUAL(buf, NULL);
 
     SIGNAL_MARK;
-    rc = buffer_alloc(3, &buf);
+    rc = buffer_alloc(&buf, 3);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->pages, 1);
     TEST_EQUAL(buf->size, 3);
@@ -259,33 +302,6 @@ END_TEST
 START_TEST(buffer, buffer_trim)
 
     TEST_NOT_IMPLEMENTED;
-
-END_TEST
-
-
-/* Test for deallocation routine.
- *
- */
-
-START_TEST(buffer, buffer_free)
-
-    SIGNAL_MARK;
-    int rc = buffer_free(NULL);
-    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
-
-    SIGNAL_MARK;
-    Buffer *buf = NULL;
-    rc = buffer_free(&buf);
-    TEST_EQUAL(rc, RC_OK);
-
-    SIGNAL_MARK;
-    rc = buffer_alloc(16, &buf);
-    TEST_EQUAL(rc, RC_OK);
-    TEST_NOT_EQUAL(buf, NULL);
-
-    rc = buffer_free(&buf);
-    TEST_EQUAL(rc, RC_OK);
-    TEST_EQUAL(buf, NULL);
 
 END_TEST
 

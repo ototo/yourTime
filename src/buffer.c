@@ -19,21 +19,11 @@
 static int buffer_add_pages(Buffer **buffer, int pages, int zero_data);
 
 
-/* Allocate new Buffer.
- *
- * Allocates new buffer with just one page pre-allocated.
- *
- * Parameters:
- *   @page_size     [in] size of the data page (just the data part);
- *   @buffer        [out] newly allocated buffer.
- *
- * Returns:
- *   RC_E_OK                on success;
- *   RC_E_OUT_OF_MEMORY     when there is no memory available.
- */
-
-int buffer_alloc(int page_size, Buffer **buffer)
+int buffer_alloc(Buffer **buffer, int page_size)
 {
+    if (!buffer)
+        return RC_E_INVALID_ARGS;
+
     Buffer *buf;
 
     buf = (Buffer *)malloc(sizeof(Buffer));
@@ -53,6 +43,34 @@ int buffer_alloc(int page_size, Buffer **buffer)
     *buffer = buf;
 
     return RC_OK;
+}
+
+
+int buffer_free(Buffer **buffer)
+{
+    if (!buffer)
+        return RC_E_INVALID_ARGS;
+
+    if (!*buffer)
+        return RC_OK;
+
+    BufferPage *current;
+    BufferPage *page = (*buffer)->head;
+    while (page) {
+        current = page;
+        page = page->next;
+        free(current);
+    }
+    free(*buffer);
+    *buffer = NULL;
+
+    return RC_OK;
+}
+
+
+int buffer_resize(Buffer **buffer, int new_size)
+{
+    return RC_E_NOT_IMPLEMENTED;
 }
 
 
@@ -349,25 +367,3 @@ int buffer_trim(Buffer **buffer, int new_size)
 
     return RC_OK;
 }
-
-int buffer_free(Buffer **buffer)
-{
-    if (!buffer)
-        return RC_E_INVALID_ARGS;
-
-    if (!*buffer)
-        return RC_OK;
-
-    BufferPage *current;
-    BufferPage *page = (*buffer)->head;
-    while (page) {
-        current = page;
-        page = page->next;
-        free(current);
-    }
-    free(*buffer);
-    *buffer = NULL;
-
-    return RC_OK;
-}
-
