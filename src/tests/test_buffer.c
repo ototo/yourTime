@@ -200,9 +200,54 @@ END_TEST
  *
  */
 
+/* Seek buffer by offset or page+offset.
+ *
+ * Two modes are supported - seeking by a global offset in the buffer and
+ * seeking by page number and intrapage offset.
+ *
+ * Parameters:
+ *   @buffer         [in] buffer to seek;
+ *   @seek_mode      [in] seek mode;
+ *   @seek_offset    [in] offset (global or in-page depending on
+ *                   seek_type);
+ *   @seek_page      [in/out] page number to seek to (for page+offset
+ *                   mode); updated after a successfull seek if not
+ *                   NULL;
+ *   @page           [out] page structure found or NULL if not;
+ *   @page_offset    [out] intra-page offset after seek.
+ *
+ * Returns:
+ *   RC_E_OK                for success;
+ *   RC_E_OUT_OF_BOUNDS     when buffer is smaller then the seek
+ *                          is requested;
+ *   RC_E_CORRUPTION        when data integrity is broken.
+
+int buffer_seek(Buffer **buffer, int seek_mode,
+                   int seek_offset, int *seek_page,
+                   BufferPage **page, int *page_offset)
+ */
 START_TEST(buffer, buffer_seek)
 
-    TEST_NOT_IMPLEMENTED;
+    int rc = buffer_seek(NULL, 0, 0, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_alloc(16, &buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->size, 16);
+
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, -1, 0, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    /******** seek by buffer offset ********/
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 2, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip_offset, 2);
+    TEST_EQUAL(buf->tip, buf->head);
+    // TODO: complete
 
 END_TEST
 

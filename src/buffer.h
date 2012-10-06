@@ -31,7 +31,7 @@ struct _Buffer
     int         pages;              /* number of allocated pages */
     int         size;               /* allocated total size (all pages) */
     int         used;               /* total used size */
-    int         tip_page_used;      /* used on the tip page */
+    int         tip_offset;         /* next byte to be written */
     BufferPage  *head;              /* the oldest page */
     BufferPage  *tail;              /* most recently added page */
     BufferPage  *tip;               /* the page containing the byte,

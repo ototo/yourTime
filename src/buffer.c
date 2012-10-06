@@ -15,6 +15,105 @@
 #include "buffer.h"
 
 
+/* forward declarations */
+static int buffer_add_pages(Buffer **buffer, int pages, int zero_data);
+
+
+/* Allocate new Buffer.
+ *
+ * Allocates new buffer with just one page pre-allocated.
+ *
+ * Parameters:
+ *   @page_size     [in] size of the data page (just the data part);
+ *   @buffer        [out] newly allocated buffer.
+ *
+ * Returns:
+ *   RC_E_OK                on success;
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
+
+int buffer_alloc(int page_size, Buffer **buffer)
+{
+    Buffer *buf;
+
+    buf = (Buffer *)malloc(sizeof(Buffer));
+    if (!buf)
+        return RC_E_OUT_OF_MEMORY;
+
+    memset(buf, 0, sizeof(Buffer));
+
+    buf->page_size = page_size;
+
+    int rc = buffer_add_pages(&buf, 1, 0);
+    if (rc) {
+        free(buf);
+        return rc;
+    }
+
+    *buffer = buf;
+
+    return RC_OK;
+}
+
+
+/* Add pages to the buffer.
+ *
+ * Appends pages to the buffer and
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to work on;
+ *   @pages         [in] number of pages to add;
+ *   @zero_data     [in] zero newly allocated pages if != 0.
+ *
+ * Returns:
+ *   RC_E_OK                for success;
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available;
+ *   RC_E_CORRUPTION        when data integrity is broken.
+ */
+
+static
+int buffer_add_pages(Buffer **buffer, int pages, int zero_data)
+{
+    if (!buffer && !*buffer)
+        return RC_E_INVALID_ARGS;
+
+    Buffer *buf = *buffer;
+    if (!buf->page_size)
+        return RC_E_INVALID_STATE;
+
+    int page_size = buf->page_size;
+
+    for (int page_nr = 0; page_nr < pages; ++page_nr) {
+        BufferPage *page = malloc(sizeof(BufferPage) + page_size);
+        if (!page)
+            return RC_E_OUT_OF_MEMORY;
+
+        memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
+
+        if (!buf->head)
+            buf->head = page;
+        else
+            buf->tail->next = page;
+        buf->tail = page;
+        buf->pages += 1;
+        buf->size += buf->page_size;
+    }
+
+    if (!buf->tip)
+        buf->tip = buf->head;
+
+    // when adding pages need to adjust the tip pointer as it points to
+    // the next available byte in the buffer (except for the case, when
+    // all the allocated pages are used up).
+    if (buf->tip_offset >= buf->page_size) {
+        buf->tip = buf->tip->next;
+        buf->tip_offset = 0;
+    }
+
+    return RC_OK;
+}
+
+
 /* Seek buffer by offset or page+offset.
  *
  * Two modes are supported - seeking by a global offset in the buffer and
@@ -55,12 +154,23 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     case BUF_SEEK_PAGE_OFFSET:
         if (!seek_page)
             return RC_E_INVALID_ARGS;
+
         target_page = *seek_page;
         offset = seek_offset;
         break;
 
     case BUF_SEEK_PAGE_REL_OFFSET:
-        // TODO: implement
+        if (!seek_page)
+            return RC_E_INVALID_ARGS;
+
+        int current_page = 0;
+        for (BufferPage *page = buf->head; page; page = page->next) {
+            if (page == buf->tip)
+                break;
+            ++current_page;
+        }
+        target_page = current_page + *seek_page;
+        offset = seek_offset;
         break;
 
     case BUF_SEEK_BUFFER_OFFSET:
@@ -72,8 +182,15 @@ int buffer_seek(Buffer **buffer, int seek_mode,
         break;
 
     case BUF_SEEK_BUFFER_REL_OFFSET:
-        // TODO: implement
+        {
+            div_t q = div(buf->used + seek_offset, buf->page_size);
+            target_page = q.quot;
+            offset = q.rem;
+        }
         break;
+
+    default:
+        return RC_E_INVALID_ARGS;
     }
 
     BufferPage *p = buf->head;
@@ -84,125 +201,15 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     if (idx != target_page)
         return RC_E_OUT_OF_BOUNDS;
 
+    buf->tip = p;
+    buf->tip_offset = offset;
+
     if (seek_page)
         *seek_page = target_page;
     if (page)
         *page = p;
     if (page_offset)
         *page_offset = offset;
-
-    return RC_OK;
-}
-
-
-/* Add pages to the buffer.
- *
- * Appends pages to the buffer and
- *
- * Parameters:
- *   @buffer        [in/out] buffer to work on;
- *   @pages         [in] number of pages to add;
- *   @used          [in] new value for used bytes counter;
- *                       counter does not get updated if -1 is passed;
- *   @zero_data     [in] zero newly allocated pages if != 0.
- *
- * Returns:
- *   RC_E_OK                for success;
- *   RC_E_OUT_OF_MEMORY     when there is no memory available;
- *   RC_E_CORRUPTION        when data integrity is broken.
- */
-
-static
-int buffer_add_pages(Buffer **buffer, int pages,
-                        int used, int zero_data)
-{
-    if (!buffer && !*buffer)
-        return RC_E_INVALID_ARGS;
-
-    Buffer *buf = *buffer;
-    if (!buf->page_size)
-        return RC_E_INVALID_STATE;
-
-    int page_size = buf->page_size;
-
-    for (int page_nr = 0; page_nr < pages; ++page_nr) {
-        BufferPage *page = malloc(sizeof(BufferPage) + page_size);
-        if (!page)
-            return RC_E_OUT_OF_MEMORY;
-
-        memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
-
-        if (!buf->head)
-            buf->head = page;
-        else
-            buf->tail->next = page;
-        buf->tail = page;
-        buf->pages += 1;
-        buf->size += buf->page_size;
-    }
-
-    if (!buf->tip)
-        buf->tip = buf->head;
-
-    // when adding pages need to adjust the tip pointer as it points to
-    // the next available byte in the buffer (except for the case, when
-    // all the allocated pages are used up).
-    if (buf->tip_page_used >= buf->page_size) {
-        buf->tip = buf->tip->next;
-        buf->tip_page_used = 0;
-    }
-
-    if (used < 0)
-        return RC_OK;
-
-    BufferPage *page = NULL;
-    int page_offset = -1;
-
-    int rc = buffer_seek(buffer, BUF_SEEK_BUFFER_OFFSET,
-                         used, NULL, &page, &page_offset);
-    if (rc != RC_OK)
-        return rc;
-
-    buf->used = used;
-    buf->tip = page;
-    buf->tip_page_used = page_offset;
-
-    return RC_OK;
-}
-
-
-/* Allocate new Buffer.
- *
- * Allocates new buffer with just one page pre-allocated.
- *
- * Parameters:
- *   @page_size     [in] size of the data page (just the data part);
- *   @buffer        [out] newly allocated buffer.
- *
- * Returns:
- *   RC_E_OK                on success;
- *   RC_E_OUT_OF_MEMORY     when there is no memory available.
- */
-
-int buffer_alloc(int page_size, Buffer **buffer)
-{
-    Buffer *buf;
-
-    buf = (Buffer *)malloc(sizeof(Buffer));
-    if (!buf)
-        return RC_E_OUT_OF_MEMORY;
-
-    memset(buf, 0, sizeof(Buffer));
-
-    buf->page_size = page_size;
-
-    int rc = buffer_add_pages(&buf, 1, 0, 0);
-    if (rc) {
-        free(buf);
-        return rc;
-    }
-
-    *buffer = buf;
 
     return RC_OK;
 }
@@ -238,25 +245,25 @@ int buffer_append(Buffer **buffer, const char *string, int size)
 
     while (left_to_append) {
         if (!buf->head || (buf->used == buf->size)) {
-            buffer_add_pages(buffer, 1, -1, 0);
+            buffer_add_pages(buffer, 1, 0);
             continue;
         }
         else {
-            if (buf->tip_page_used == buf->page_size) {
+            if (buf->tip_offset == buf->page_size) {
                 if (!buf->tip->next)
                     return RC_E_INVALID_STATE;
                 else
                     buf->tip = buf->tip->next;
             }
 
-            int available = buf->page_size - buf->tip_page_used;
+            int available = buf->page_size - buf->tip_offset;
             int to_copy = (available < left_to_append)
                         ? available
                         : left_to_append;
-            memcpy(buf->tip->data + buf->tip_page_used, chars_to_append, to_copy);
+            memcpy(buf->tip->data + buf->tip_offset, chars_to_append, to_copy);
             left_to_append -= to_copy;
             chars_to_append += to_copy;
-            buf->tip_page_used += to_copy;
+            buf->tip_offset += to_copy;
             buf->used += to_copy;
         }
     }
@@ -319,8 +326,8 @@ int buffer_get_as_string(Buffer **buffer, String *string)
 
     for (BufferPage *page = (*buffer)->head; page; page = page->next) {
         if (page == last) {
-            memcpy(to, page->data, (*buffer)->tip_page_used);
-            to += (*buffer)->tip_page_used;
+            memcpy(to, page->data, (*buffer)->tip_offset);
+            to += (*buffer)->tip_offset;
         }
         else {
             memcpy(to, page->data, page_size);
