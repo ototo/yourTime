@@ -15,20 +15,18 @@
 #define BUF_SEEK_BUFFER_OFFSET      2
 #define BUF_SEEK_BUFFER_REL_OFFSET  3
 
-/* paged buffer structures */
-struct _BufferPage;
-typedef struct _BufferPage BufferPage;
-
 
 /* Page of buffer.
  *
  * Used to allocate memory for a Buffer as needed.
  */
+typedef struct _BufferPage BufferPage;
 struct _BufferPage
 {
     BufferPage  *next;      /* next page moving from head to tail */
     char        data[];     /* data buffer itself */
 };
+
 
 
 /* Buffer of bytes.
@@ -99,18 +97,201 @@ int buffer_resize(Buffer **buffer, int new_size);
  */
 int buffer_free(Buffer **buffer);
 
+
+/* Write data to a buffer.
+ *
+ * Writes data to the buffer, increasing the buffer if needed.
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @data          [in] pointer to data to be appended;
+ *   @size          [in] number of chars of data to be written.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_write(Buffer **buffer, const char *data, int size);
+
+
+/* Write a String to a buffer.
+ *
+ * Writes a String to the buffer, increasing the buffer if needed.
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @str           [in] String with data to be written.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_write_string(Buffer **buffer, const String str);
-int buffer_read(Buffer **buffer, char *data, int size);
-int buffer_read_string(Buffer **buffer, String *str, int size);
+
+
+/* Read data from a buffer.
+ *
+ * Reads data from the buffer.
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @data          [in] pointer to a buffer of @size chars;
+ *   @size          [in] number of chars of data to be read;
+ *   @read          [out] number of chars got read.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
+int buffer_read(Buffer **buffer, char *data, int size, int *read);
+
+
+/* Read data from a buffer (into a String).
+ *
+ * Reads data from the buffer.
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @str           [in] String to receive the data being read;
+ *   @size          [in] number of chars of data to be read;
+ *   @read          [out] number of chars got read.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
+int buffer_read_string(Buffer **buffer, String *str, int size, int *read);
+
+
+/* Get the buffer contents as a String.
+ *
+ * Get Buffer's contents stored in a String.
+ *
+ * Parameters:
+ *   @buffer        [in] buffer to get data from;
+ *   @str           [in] String to receive the data.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_get_as_string(Buffer **buffer, String *str);
-int buffer_append(Buffer **buffer, const char *string, int size);
+
+
+/* Append data to a buffer.
+ *
+ * Appends data to the buffer, increasing the buffer if needed. Data is
+ * appended starting from the first unused char (pointed by the member
+ * buffer->used).
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @data          [in] pointer to data to be appended;
+ *   @size          [in] number of chars of data to be written.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
+int buffer_append(Buffer **buffer, const char *data, int size);
+
+
+/* Append a String to a buffer.
+ *
+ * Appends a String to the buffer, increasing the buffer if needed. Data
+ * is appended starting from the first unused char (pointed by the
+ * member buffer->used).
+ *
+ * Parameters:
+ *   @buffer        [in/out] buffer to modify;
+ *   @str           [in] String with data to be appended.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_append_string(Buffer **buffer, String *str);
 
+
+/* Get the used chars count.
+ *
+ * Returns the number of chars being used (written to) in the buffer.
+ *
+ * Parameters:
+ *   @buffer        [in] buffer to query;
+ *   @used          [out] variable to receive the count.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_used(Buffer **buffer, int *used);
+
+
+/* Get the allocated chars count.
+ *
+ * Returns the number of chars allocated for the buffer.
+ *
+ * Parameters:
+ *   @buffer        [in] buffer to query;
+ *   @used          [out] variable to receive the count.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_allocated(Buffer **buffer, int *allocated);
 
+
+/* Seek buffer by offset or page+offset.
+ *
+ * Two modes are supported - seeking by a global offset in the buffer and
+ * seeking by page number and intrapage offset.
+ *
+ * Parameters:
+ *   @buffer         [in] buffer to seek;
+ *   @seek_mode      [in] seek mode;
+ *   @seek_offset    [in] offset (global or in-page depending on
+ *                   seek_type);
+ *   @seek_page      [in/out] page number to seek to (for page+offset
+ *                   mode); updated after a successfull seek if not
+ *                   NULL;
+ *   @page           [out] page structure found or NULL if not;
+ *   @page_offset    [out] intra-page offset after seek.
+ *
+ * Returns:
+ *   RC_E_OK                for success;
+ *   RC_E_OUT_OF_BOUNDS     when buffer is smaller then the seek
+ *                          is requested;
+ *   RC_E_CORRUPTION        when data integrity is broken.
+ */
 int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
                    BufferPage **page, int *page_offset);
+
+
+/* Get the buffer tip position.
+ *
+ * When writing/reading the buffer, tip position is used. This function
+ * returns the current tip position (offset from the beginning of the
+ * buffer).
+ *
+ * Parameters:
+ *   @buffer        [in] buffer to query;
+ *   @used          [out] variable to receive the offset.
+ *
+ * Returns:
+ *   RC_OK                  on success.
+ *   RC_E_INVALID_ARGS      when arguments provided are invalid.
+ *   RC_E_OUT_OF_MEMORY     when there is no memory available.
+ */
 int buffer_tip(Buffer **buffer, int *buffer_offset);

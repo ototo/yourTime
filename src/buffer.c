@@ -132,28 +132,6 @@ int buffer_add_pages(Buffer **buffer, int pages, int zero_data)
 }
 
 
-/* Seek buffer by offset or page+offset.
- *
- * Two modes are supported - seeking by a global offset in the buffer and
- * seeking by page number and intrapage offset.
- *
- * Parameters:
- *   @buffer         [in] buffer to seek;
- *   @seek_mode      [in] seek mode;
- *   @seek_offset    [in] offset (global or in-page depending on
- *                   seek_type);
- *   @seek_page      [in/out] page number to seek to (for page+offset
- *                   mode); updated after a successfull seek if not
- *                   NULL;
- *   @page           [out] page structure found or NULL if not;
- *   @page_offset    [out] intra-page offset after seek.
- *
- * Returns:
- *   RC_E_OK                for success;
- *   RC_E_OUT_OF_BOUNDS     when buffer is smaller then the seek
- *                          is requested;
- *   RC_E_CORRUPTION        when data integrity is broken.
- */
 
 int buffer_seek(Buffer **buffer, int seek_mode,
                    int seek_offset, int *seek_page,
@@ -233,22 +211,6 @@ int buffer_seek(Buffer **buffer, int seek_mode,
 }
 
 
-/* Append string to the buffer.
- *
- * Appends a zero-terminated string to the buffer.
- *
- * Parameters:
- *   @buffer        [in/out] buffer to operate on;
- *   @string        [in] string to add to the buffer;
- *   @size          [in] counter of characters to be added;
- *                       if negative, then till zero terminator.
- *
- * Returns:
- *   RC_E_OK                on success;
- *   RC_E_ARGUMENTS         invalid arguments are provided;
- *   RC_E_OUT_OF_MEMORY     when there is no memory available.
- */
-
 int buffer_append(Buffer **buffer, const char *string, int size)
 {
     if (!buffer || !*buffer)
@@ -303,18 +265,6 @@ int buffer_used(Buffer **buffer, int *used)
     return RC_OK;
 }
 
-
-/* Get a string from buffer contents.
- *
- * Creates a zero-terminated string from all the contents of the buffer.
- *
- * Parameters:
- *   @buffer        [in] buffer to work on;
- *   @string        [out] String containing buffer data.
- *
- * Returns:
- *   RC_OK          on success;
- */
 
 int buffer_get_as_string(Buffer **buffer, String *string)
 {
