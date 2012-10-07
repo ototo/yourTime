@@ -7,8 +7,9 @@
 
 #pragma once
 
-#include "string.h"
+#include <stdbool.h>
 
+#include "string.h"
 
 #define BUF_SEEK_PAGE_OFFSET        0
 #define BUF_SEEK_PAGE_REL_OFFSET    1
@@ -35,15 +36,15 @@ struct _BufferPage
  */
 struct _Buffer
 {
-    int         page_size;          /* size of a page */
-    int         pages;              /* number of allocated pages */
-    int         size;               /* allocated total size (all pages) */
-    int         used;               /* total used size (payload) */
-    BufferPage  *head;              /* the oldest page */
-    BufferPage  *tail;              /* most recently added page */
-    BufferPage  *tip;               /* the page containing the byte,
-                                       referred by the @tip_offset */
-    int         tip_offset;         /* next byte to be written */
+    unsigned int    page_size;  /* size of a page */
+    unsigned int    pages;      /* number of allocated pages */
+    unsigned int    size;       /* allocated total size (all pages) */
+    unsigned int    used;       /* total used size (payload) */
+    BufferPage      *head;      /* the oldest page */
+    BufferPage      *tail;      /* most recently added page */
+    BufferPage      *tip;       /* the page containing the byte,
+                                   referred by the @tip_offset */
+    unsigned int    tip_offset; /* next byte to be written */
 };
 
 typedef struct _Buffer Buffer;
@@ -62,7 +63,7 @@ typedef struct _Buffer Buffer;
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_alloc(Buffer **buffer, int page_size);
+int buffer_alloc(Buffer **buffer, unsigned int page_size);
 
 
 /* Change buffer size.
@@ -80,7 +81,7 @@ int buffer_alloc(Buffer **buffer, int page_size);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_resize(Buffer **buffer, int new_size);
+int buffer_resize(Buffer **buffer, unsigned int new_size);
 
 
 /* Free a buffer.
@@ -112,7 +113,7 @@ int buffer_free(Buffer **buffer);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_write(Buffer **buffer, const char *data, int size);
+int buffer_write(Buffer **buffer, const char *data, unsigned int size);
 
 
 /* Write a String to a buffer.
@@ -128,7 +129,7 @@ int buffer_write(Buffer **buffer, const char *data, int size);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_write_string(Buffer **buffer, const String str);
+int buffer_write_string(Buffer **buffer, const String *str);
 
 
 /* Read data from a buffer.
@@ -146,7 +147,8 @@ int buffer_write_string(Buffer **buffer, const String str);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_read(Buffer **buffer, char *data, int size, int *read);
+int buffer_read(Buffer **buffer, char *data, unsigned int size,
+                unsigned int *read);
 
 
 /* Read data from a buffer (into a String).
@@ -164,7 +166,8 @@ int buffer_read(Buffer **buffer, char *data, int size, int *read);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_read_string(Buffer **buffer, String *str, int size, int *read);
+int buffer_read_string(Buffer **buffer, String *str, unsigned int size,
+                       unsigned int *read);
 
 
 /* Get the buffer contents as a String.
@@ -199,7 +202,7 @@ int buffer_get_as_string(Buffer **buffer, String *str);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_append(Buffer **buffer, const char *data, int size);
+int buffer_append(Buffer **buffer, const char *data, unsigned int size);
 
 
 /* Append a String to a buffer.
@@ -233,7 +236,7 @@ int buffer_append_string(Buffer **buffer, String *str);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_used(Buffer **buffer, int *used);
+int buffer_used(Buffer **buffer, unsigned int *used);
 
 
 /* Get the allocated chars count.
@@ -249,7 +252,7 @@ int buffer_used(Buffer **buffer, int *used);
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_allocated(Buffer **buffer, int *allocated);
+int buffer_allocated(Buffer **buffer, unsigned int *allocated);
 
 
 /* Seek buffer by offset or page+offset.
@@ -275,8 +278,8 @@ int buffer_allocated(Buffer **buffer, int *allocated);
  *   RC_E_CORRUPTION        when data integrity is broken.
  */
 int buffer_seek(Buffer **buffer, int seek_mode,
-                   int seek_offset, int *seek_page,
-                   BufferPage **page, int *page_offset);
+                   unsigned int seek_offset, unsigned int *seek_page,
+                   BufferPage **page, unsigned int *page_offset);
 
 
 /* Get the buffer tip position.
@@ -294,4 +297,4 @@ int buffer_seek(Buffer **buffer, int seek_mode,
  *   RC_E_INVALID_ARGS      when arguments provided are invalid.
  *   RC_E_OUT_OF_MEMORY     when there is no memory available.
  */
-int buffer_tip(Buffer **buffer, int *buffer_offset);
+int buffer_tip(Buffer **buffer, unsigned int *buffer_offset);
