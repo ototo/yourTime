@@ -22,16 +22,16 @@ static const char const *test_chars = "test chars";
 
 START_TEST(string, string_allocate)
 
-    int rc = string_allocate(0, NULL);
+    int rc = string_allocate(NULL, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate(1, NULL);
+    rc = string_allocate(NULL, 1);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
     String str;
-    rc = string_allocate(256, &str);
+    rc = string_allocate(&str, 256);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.recycler, free);
     TEST_EQUAL(str.refcount, 1);
@@ -52,16 +52,16 @@ END_TEST
 
 START_TEST(string, string_allocate_static)
 
-    int rc = string_allocate_static("test string", NULL);
+    int rc = string_allocate_static(NULL, "test string");
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
     String str;
-    rc = string_allocate_static(NULL, &str);
+    rc = string_allocate_static(&str, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate_static(test_chars, &str);
+    rc = string_allocate_static(&str, test_chars);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.recycler, string_zero_recycler);
     TEST_EQUAL(str.refcount, 1);
@@ -87,16 +87,16 @@ START_TEST(string, string_allocate_dynamic)
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate_dynamic(test_chars, NULL);
+    rc = string_allocate_dynamic(NULL, test_chars);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
     String str;
-    rc = string_allocate_dynamic(NULL, &str);
+    rc = string_allocate_dynamic(&str, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate_dynamic(test_chars, &str);
+    rc = string_allocate_dynamic(&str, test_chars);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.recycler, free);
     TEST_EQUAL(str.refcount, 1);
@@ -119,7 +119,7 @@ END_TEST
 START_TEST(string, string_release)
 
     String str;
-    int rc = string_allocate_static(test_chars, &str);
+    int rc = string_allocate_static(&str, test_chars);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.recycler, string_zero_recycler);
     TEST_EQUAL(str.refcount, 1);
@@ -162,10 +162,10 @@ START_TEST(string, string_copy)
     memset(&from_dynamic, 0, sizeof(from_dynamic));
     memset(&to, 0, sizeof(to));
 
-    int rc = string_allocate_static(test_chars, &from_static);
+    int rc = string_allocate_static(&from_static, test_chars);
     TEST_EQUAL(rc, RC_OK);
 
-    rc = string_allocate_dynamic(test_chars, &from_dynamic);
+    rc = string_allocate_dynamic(&from_dynamic, test_chars);
     TEST_EQUAL(rc, RC_OK);
 
     /* check for missing target */
@@ -214,38 +214,32 @@ END_TEST
 
 START_TEST(string, string_hold)
 
-    int count = -1;
-    int rc = string_hold(NULL, NULL);
+    int rc = string_hold(NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     String str;
     memset(&str, 0, sizeof(str));
-    rc = string_hold(&str, &count);
+    rc = string_hold(&str);
     TEST_EQUAL(rc, RC_E_INVALID_STATE);
-    TEST_EQUAL(count, -1); /* should not be updated */
 
     /* pretend we have chars, but zero refcount */
     str.chars = (char *)test_chars;
-    rc = string_hold(&str, &count);
+    rc = string_hold(&str);
     TEST_EQUAL(rc, RC_E_INVALID_STATE);
-    TEST_EQUAL(count, -1); /* should not be updated */
 
     /* now add real string and recycler */
     str.chars = malloc(strlen(test_chars)+1);
     str.refcount = 1;
     str.recycler = free;
-    rc = string_hold(&str, &count);
+    rc = string_hold(&str);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.refcount, 2);
-    TEST_EQUAL(count, 2);
 
     /* check for counter saturation */
-    count = -1;
     str.refcount = STRING_REFCOUNT_MAX;
-    rc = string_hold(&str, &count);
+    rc = string_hold(&str);
     TEST_EQUAL(rc, RC_OK_NO_ACTION);
     TEST_EQUAL(str.refcount, STRING_REFCOUNT_MAX);
-    TEST_EQUAL(count, -1);
 
     /* release it */
     str.refcount = 1;
@@ -255,5 +249,4 @@ START_TEST(string, string_hold)
     TEST_EQUAL(str.chars, NULL);
 
 END_TEST
-
 

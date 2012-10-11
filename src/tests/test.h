@@ -147,6 +147,10 @@ int test_##test_name() \
     __FILE__, __LINE__, suite, name);\
     ++failed;\
 
+#define TEST_INCOMPLETE \
+    bool is_test_complete = false;\
+    TEST_TRUE(is_test_complete);
+
 
 extern int g_signo;
 extern sigjmp_buf g_sig_env;

@@ -13,119 +13,115 @@
 #include "string.h"
 
 
-int string_allocate(unsigned int size, String *new_string)
+int string_allocate(String *str, unsigned int size)
 {
-    if (!size || !new_string)
+    if (!str || !size)
         return RC_E_INVALID_ARGS;
 
-    char *str = malloc(size + 1);
+    char *chars = malloc(size + 1);
 
-    if (!str)
+    if (!chars)
         return RC_E_OUT_OF_MEMORY;
 
-    new_string->recycler = free;
-    new_string->refcount = 1;
-    new_string->chars = str;
-    *new_string->chars = '\0';
+    str->recycler = free;
+    str->refcount = 1;
+    str->chars = chars;
+    *str->chars = '\0';
 
     return RC_OK;
 }
 
-int string_allocate_static(const char const *string,
-                           String *new_string)
+int string_allocate_static(String *str, const char const *chars)
 {
-    if (!string || !new_string)
+    if (!str || !chars)
         return RC_E_INVALID_ARGS;
 
-    new_string->recycler = string_zero_recycler;
-    new_string->refcount = 1;
-    new_string->chars = (char *)string;
+    str->recycler = string_zero_recycler;
+    str->refcount = 1;
+    str->chars = (char *)chars;
 
     return RC_OK;
 }
 
-int string_allocate_dynamic(const char const *chars, String *string)
+int string_allocate_dynamic(String *str, const char const *chars)
 {
-    if (!chars || !string)
+    if (!str || !chars)
         return RC_E_INVALID_ARGS;
 
     int len = strlen(chars);
-    String str;
-    int rc = string_allocate(len, &str);
+    String new_str;
+    int rc = string_allocate(&new_str, len);
     if (rc != RC_OK)
         return rc;
 
-    memcpy(str.chars, chars, len + 1);
-    memcpy(string, &str, sizeof(*string));
+    memcpy(new_str.chars, chars, len + 1);
+    memcpy(str, &new_str, sizeof(*str));
 
     return RC_OK;
 }
 
-int string_copy(String *to, const String *from)
+int string_copy(String *str_to, const String *str_from)
 {
-    if (!from || !to)
+    if (!str_from || !str_to)
         return RC_E_INVALID_ARGS;
 
-    if (to->chars && (!to->recycler || !to->refcount))
+    if (str_to->chars && (!str_to->recycler || !str_to->refcount))
         return RC_E_INVALID_STATE;
 
-    if (to->refcount > 1)
+    if (str_to->refcount > 1)
         return RC_E_NOT_EXCLUSIVE;
 
-    if (to->refcount) {
-        int rc = string_release(to);
+    if (str_to->refcount) {
+        int rc = string_release(str_to);
         if (rc != RC_OK)
             return rc;
     }
 
-    int len = from->chars ? strlen(from->chars) + 1 : 0;
+    int len = str_from->chars ? strlen(str_from->chars) + 1 : 0;
     char *str = len ? malloc(len) : NULL;
     if (len && !str)
         return RC_E_OUT_OF_MEMORY;
 
     if (str)
-        memcpy(str, from->chars, len);
+        memcpy(str, str_from->chars, len);
 
-    to->refcount = 1;
-    to->chars = str;
-    to->recycler = len ? free : string_zero_recycler;
+    str_to->refcount = 1;
+    str_to->chars = str;
+    str_to->recycler = len ? free : string_zero_recycler;
 
     return RC_OK;
 }
 
-int string_hold(String *string, int *new_ref)
+int string_hold(String *str)
 {
-    if (!string)
+    if (!str)
         return RC_E_INVALID_ARGS;
 
-    if (!string->chars || !string->refcount)
+    if (!str->chars || !str->refcount)
         return RC_E_INVALID_STATE;
 
-    if (string->refcount == STRING_REFCOUNT_MAX)
+    if (str->refcount == STRING_REFCOUNT_MAX)
         return RC_OK_NO_ACTION;
 
-    ++string->refcount;
-
-    if (new_ref)
-        *new_ref = string->refcount;
+    ++str->refcount;
 
     return RC_OK;
 }
 
-int string_release(String *string)
+int string_release(String *str)
 {
-    if (!string)
+    if (!str)
         return RC_E_INVALID_ARGS;
 
-    if (string->refcount == 0)
+    if (str->refcount == 0)
         return RC_E_INVALID_ARGS;
 
-    if (! --string->refcount) {
-        if (string->recycler) {
-            string->recycler(string->chars);
-            string->recycler = NULL;
+    if (! --str->refcount) {
+        if (str->recycler) {
+            str->recycler(str->chars);
+            str->recycler = NULL;
         }
-        string->chars = NULL;
+        str->chars = NULL;
     }
 
     return RC_OK;

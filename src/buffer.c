@@ -15,10 +15,13 @@
 #include "buffer.h"
 
 
-/* forward declarations */
-static int buffer_add_pages(Buffer **buffer, unsigned int pages,
-                            bool zero_data);
+/* forward declarations for private functions */
 
+int buffer_add_pages(Buffer **buffer, unsigned int pages,
+                     bool zero_data);
+
+
+/* public API functions */
 
 int buffer_alloc(Buffer **buffer, unsigned int page_size)
 {
@@ -49,6 +52,9 @@ int buffer_alloc(Buffer **buffer, unsigned int page_size)
 
 int buffer_resize(Buffer **buffer, unsigned int new_size)
 {
+    if (!buffer || !*buffer || !new_size)
+        return RC_E_INVALID_ARGS;
+
     return RC_E_NOT_IMPLEMENTED;
 }
 
@@ -77,12 +83,24 @@ int buffer_free(Buffer **buffer)
 
 int buffer_write(Buffer **buffer, const char *data, unsigned int size)
 {
+    if (!buffer || !*buffer || !data)
+        return RC_E_INVALID_ARGS;
+
+    if (!size)
+        return RC_OK;
+
     return RC_E_NOT_IMPLEMENTED;
 }
 
 
 int buffer_write_string(Buffer **buffer, const String *str)
 {
+    if (!buffer || !*buffer || !str)
+        return RC_E_INVALID_ARGS;
+
+    if (!str->chars)
+        return RC_OK;
+
     return RC_E_NOT_IMPLEMENTED;
 }
 
@@ -90,6 +108,14 @@ int buffer_write_string(Buffer **buffer, const String *str)
 int buffer_read(Buffer **buffer, char *data, unsigned int size,
                 unsigned int *read)
 {
+    if (!buffer || !*buffer || !data || !read)
+        return RC_E_INVALID_ARGS;
+
+    if (!size) {
+        *read = 0;
+        return RC_OK;
+    }
+
     return RC_E_NOT_IMPLEMENTED;
 }
 
@@ -97,48 +123,57 @@ int buffer_read(Buffer **buffer, char *data, unsigned int size,
 int buffer_read_string(Buffer **buffer, String *str, unsigned int size,
                        unsigned int *read)
 {
+    if (!buffer || !*buffer || !str || !read)
+        return RC_E_INVALID_ARGS;
+
+    if (!size) {
+        *read = 0;
+        return RC_OK;
+    }
+
     return RC_E_NOT_IMPLEMENTED;
 }
 
 
-int buffer_get_as_string(Buffer **buffer, String *string)
+int buffer_get_as_string(Buffer **buffer, String *str)
 {
-    if (!buffer || !string)
+    if (!buffer || !*buffer || !str)
         return RC_E_INVALID_ARGS;
 
-    if (!*buffer)
-        return RC_E_INVALID_STATE;
+    String new_str;
 
     if (!(*buffer)->used) {
-        String str;
-        int rc = string_allocate_static("", &str);
+        int rc = string_allocate_static(&new_str, "");
         if (rc != RC_OK)
             return rc;
-        *string = str;
+        *str = new_str;
         return RC_OK;
     }
 
-    String str;
-    int rc = string_allocate((*buffer)->used, &str);
+    int rc = string_allocate(&new_str, (*buffer)->used);
     if (rc != RC_OK)
         return rc;
 
-    unsigned int page_size = (*buffer)->page_size;
-    BufferPage *last = (*buffer)->tip;
-    char *to = str.chars;
+    Buffer *buf = *buffer;
+    BufferPage *page = buf->head;
+    unsigned int chars_left = buf->used;
+    char *copy_to = new_str.chars;
+    div_t r = div(buf->used, buf->page_size);
+    unsigned int chunk_size;
+    while (chars_left) {
+        if (!page)
+            return RC_E_INVALID_STATE;
 
-    for (BufferPage *page = (*buffer)->head; page; page = page->next) {
-        if (page == last) {
-            memcpy(to, page->data, (*buffer)->tip_offset);
-            to += (*buffer)->tip_offset;
-        }
-        else {
-            memcpy(to, page->data, page_size);
-            to += page_size;
-        }
+        chunk_size = (chars_left > buf->page_size)
+                   ? buf->page_size
+                   : r.rem;
+        memcpy(copy_to, page->data, chunk_size);
+        page = page->next;
+        chars_left -= chunk_size;
+        copy_to += chunk_size;
     }
-    *to = '\0';
-    *string = str;
+    *copy_to = '\0';
+    *str = new_str;
 
     return RC_OK;
 }
@@ -152,7 +187,7 @@ int buffer_append(Buffer **buffer, const char *string, unsigned int size)
         return RC_OK;
 
     Buffer *buf = *buffer;
-    unsigned int left_to_append = (size > 0) ? size : strlen(string);
+    unsigned int left_to_append = size;
     const char *chars_to_append = string;
 
     while (left_to_append) {
@@ -161,21 +196,14 @@ int buffer_append(Buffer **buffer, const char *string, unsigned int size)
             continue;
         }
         else {
-            if (buf->tip_offset == buf->page_size) {
-                if (!buf->tip->next)
-                    return RC_E_INVALID_STATE;
-                else
-                    buf->tip = buf->tip->next;
-            }
-
-            unsigned int available = buf->page_size - buf->tip_offset;
+            div_t r = div(buf->used, buf->page_size);
+            unsigned int available = buf->page_size - r.rem;
             unsigned int to_copy = (available < left_to_append)
                         ? available
                         : left_to_append;
-            memcpy(buf->tip->data + buf->tip_offset, chars_to_append, to_copy);
+            memcpy(buf->tail->data + r.rem, chars_to_append, to_copy);
             left_to_append -= to_copy;
             chars_to_append += to_copy;
-            buf->tip_offset += to_copy;
             buf->used += to_copy;
         }
     }
@@ -314,11 +342,10 @@ int buffer_tip(Buffer **buffer, unsigned int *buffer_offset)
  *   RC_E_CORRUPTION        when data integrity is broken.
  */
 
-static
 int buffer_add_pages(Buffer **buffer, unsigned int pages,
                      bool zero_data)
 {
-    if (!buffer && !*buffer)
+    if (!buffer || !*buffer || !pages)
         return RC_E_INVALID_ARGS;
 
     Buffer *buf = *buffer;

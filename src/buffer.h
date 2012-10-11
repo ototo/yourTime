@@ -17,7 +17,7 @@
 #define BUF_SEEK_BUFFER_REL_OFFSET  3
 
 
-/* Page of buffer.
+/* Page of Buffer.
  *
  * Used to allocate memory for a Buffer as needed.
  */
@@ -30,9 +30,18 @@ struct _BufferPage
 
 
 
-/* Buffer of bytes.
+/* Buffer of chars.
  *
- * Allows free reading/writing of data.
+ * Allows free reading/writing of data. Buffer uses three concepts
+ * related to size:
+ *   1. Allocated size (@size) - amount of memory allocated to the
+ *      buffer; allocation is done with page granularity on demand.
+ *   2. Used size (@used) - amount of memory used by writing data.
+ *   3. Current buffer pointer (@tip, @tip_offset) - points to the next
+ *      char that will be read/written to.
+ *
+ * Appending to the buffer is always done starting from the char
+ * following the one pointed to by @used offset.
  */
 struct _Buffer
 {

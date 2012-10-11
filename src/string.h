@@ -25,11 +25,10 @@ struct _String
 
 typedef struct _String String;
 
-int string_allocate(unsigned int size, String *new_string);
-int string_allocate_dynamic(const char const *chars, String *string);
-int string_allocate_static(const char const *string,
-                           String *new_string);
-int string_copy(String *to, const String *from);
-int string_hold(String *string, int *new_ref);
-int string_release(String *string);
+int string_allocate(String *str, unsigned int size);
+int string_allocate_dynamic(String *str, const char const *chars);
+int string_allocate_static(String *str, const char const *chars);
+int string_copy(String *str_to, const String *str_from);
+int string_hold(String *str);
+int string_release(String *str);
 void string_zero_recycler(void *ptr);

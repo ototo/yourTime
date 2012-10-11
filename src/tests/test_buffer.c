@@ -49,6 +49,10 @@ START_TEST(buffer, buffer_alloc)
     TEST_EQUAL(buf->head, buf->tip);
 
     SIGNAL_MARK;
+    for (unsigned int offset = 0; offset < buf->page_size; ++offset)
+        buf->head->data[offset] = 0xFF;
+
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -63,7 +67,28 @@ END_TEST
 START_TEST(buffer, buffer_resize)
 
     int rc = buffer_resize(NULL, 0);
-    TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    Buffer *buf = NULL;
+    rc = buffer_resize(&buf, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_resize(&buf, 16);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_resize(&buf, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    /* TODO: complete the test as soon as the functionality itself is
+     * complete.
+     */
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -102,7 +127,47 @@ END_TEST
 START_TEST(buffer, buffer_write)
 
     int rc = buffer_write(NULL, NULL, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(NULL, test_chars, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(NULL, NULL, test_chars_len);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_write(&buf, NULL, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(&buf, test_chars, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(&buf, NULL, test_chars_len);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_write(&buf, NULL, 0);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(&buf, test_chars, 0);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_write(&buf, NULL, test_chars_len);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write(&buf, test_chars, test_chars_len);
     TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+
+    /* TODO: complete the test as soon as the functionality itself is
+     * complete.
+     */
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
 
 END_TEST
 
@@ -114,7 +179,49 @@ END_TEST
 START_TEST(buffer, buffer_write_string)
 
     int rc = buffer_write_string(NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    String str;
+    memset(&str, 0, sizeof(str));
+    rc = buffer_write_string(NULL, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_write_string(&buf, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write_string(&buf, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = string_allocate_static(&str, test_chars);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_write_string(NULL, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_write_string(&buf, &str);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_write_string(&buf, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_write_string(&buf, &str);
     TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+
+    /* TODO: complete the test as soon as the functionality itself is
+     * complete.
+     */
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
 
 END_TEST
 
@@ -126,7 +233,86 @@ END_TEST
 START_TEST(buffer, buffer_read)
 
     int rc = buffer_read(NULL, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(NULL, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    unsigned int read = -1;
+    rc = buffer_read(NULL, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    char chars[16];
+    rc = buffer_read(NULL, chars, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(NULL, chars, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(NULL, chars, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_read(&buf, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_read(&buf, chars, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, chars, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, chars, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_read(&buf, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_read(&buf, chars, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, chars, 0, &read);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, 0);
+
+    rc = buffer_read(&buf, chars, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read(&buf, chars, 16, &read);
     TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+
+    /* TODO: complete the test as soon as the functionality itself is
+     * complete.
+     */
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -138,7 +324,86 @@ END_TEST
 START_TEST(buffer, buffer_read_string)
 
     int rc = buffer_read_string(NULL, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(NULL, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    unsigned int read = -1;
+    rc = buffer_read_string(NULL, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    String str;
+    rc = buffer_read_string(NULL, &str, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(NULL, &str, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(NULL, &str, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_read_string(&buf, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_read_string(&buf, &str, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, &str, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, &str, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+
+    rc = buffer_read_string(&buf, NULL, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, NULL, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, NULL, 16, &read);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(read, -1);
+
+    SIGNAL_MARK;
+    rc = buffer_read_string(&buf, &str, 0, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, &str, 0, &read);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, 0);
+
+    rc = buffer_read_string(&buf, &str, 16, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    rc = buffer_read_string(&buf, &str, 16, &read);
     TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+
+    /* TODO: complete the test as soon as the functionality itself is
+     * complete.
+     */
+
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -164,7 +429,7 @@ START_TEST(buffer, buffer_get_as_string)
 
     SIGNAL_MARK;
     rc = buffer_get_as_string(&buf, &str);
-    TEST_EQUAL(rc, RC_E_INVALID_STATE);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK;
     rc = buffer_alloc(&buf, 16);
@@ -244,8 +509,7 @@ START_TEST(buffer, buffer_append)
     TEST_EQUAL(buf->size, buf->page_size * 2);
     TEST_EQUAL(buf->pages, 2);
 
-    bool is_test_complete = false;
-    TEST_TRUE(is_test_complete);
+    TEST_INCOMPLETE;
 
 END_TEST
 
@@ -345,8 +609,7 @@ START_TEST(buffer, buffer_seek)
     TEST_EQUAL(buf->tip_offset, 2);
     TEST_EQUAL(buf->tip, buf->head);
 
-    bool is_test_complete = false;
-    TEST_TRUE(is_test_complete);
+    TEST_INCOMPLETE;
 
 END_TEST
 
@@ -354,7 +617,6 @@ END_TEST
 /* Test for buffer tip position quering routine.
  *
  */
-
 START_TEST(buffer, buffer_tip)
 
     int rc = buffer_tip(NULL, NULL);
@@ -363,3 +625,18 @@ START_TEST(buffer, buffer_tip)
 END_TEST
 
 
+/* forward declarations for private functions */
+
+int buffer_add_pages(Buffer **buffer, unsigned int pages,
+                     bool zero_data);
+
+
+/* Test for page allocation routine (private one).
+ *
+ */
+START_TEST(buffer, buffer_add_pages)
+
+    int rc = buffer_add_pages(NULL, 0, false);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+END_TEST
