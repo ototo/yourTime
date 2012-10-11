@@ -55,7 +55,53 @@ int buffer_resize(Buffer **buffer, unsigned int new_size)
     if (!buffer || !*buffer || !new_size)
         return RC_E_INVALID_ARGS;
 
-    return RC_E_NOT_IMPLEMENTED;
+    Buffer *buf = *buffer;
+
+    div_t r = div(new_size, buf->page_size);
+    unsigned int pages_needed = r.quot + (r.rem ? 1 : 0);
+
+    if (pages_needed == buf->pages)
+        return RC_OK;
+
+    if (pages_needed > buf->pages)
+        return buffer_add_pages(buffer, pages_needed - buf->pages,
+                                true);
+    else {
+        BufferPage *prev_page = NULL;
+        BufferPage *page = buf->head;
+        buf->pages = pages_needed;
+        buf->size = pages_needed * buf->page_size;
+        while (pages_needed) {
+            if (!page->next)
+                return RC_E_INVALID_STATE;
+            prev_page = page;
+            page = page->next;
+            --pages_needed;
+        }
+        if (prev_page) {
+            prev_page->next = NULL;
+            buf->tail = prev_page;
+        }
+        else {
+            buf->head = buf->tail = buf->tip = NULL;
+            buf->tip_offset = 0;
+        }
+
+        BufferPage *to_free = NULL;
+        while (page) {
+            if (buf->tip == page) {
+                buf->tip = buf->tail;
+                buf->tip_offset = buf->page_size;
+            }
+            to_free = page;
+            page = page->next;
+            free(to_free);
+        }
+
+        return RC_OK;
+    }
+
+    return RC_OK;
 }
 
 
@@ -334,7 +380,7 @@ int buffer_tip(Buffer **buffer, unsigned int *buffer_offset)
  * Parameters:
  *   @buffer        [in/out] buffer to work on;
  *   @pages         [in] number of pages to add;
- *   @zero_data     [in] zero newly allocated pages if != 0.
+ *   @zero_data     [in] zero newly allocated pages if true.
  *
  * Returns:
  *   RC_E_OK                for success;

@@ -78,7 +78,8 @@ int buffer_alloc(Buffer **buffer, unsigned int page_size);
 /* Change buffer size.
  *
  * Increases/decreases the size of the buffer by adding/removing pages
- * and adjusting the tip accordingly.
+ * and adjusting the tip accordingly. Size is adjusted to be
+ * page-aligned.
  *
  * Parameters:
  *   @buffer        [in/out] buffer to modify;

@@ -82,9 +82,24 @@ START_TEST(buffer, buffer_resize)
     rc = buffer_resize(&buf, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
-    /* TODO: complete the test as soon as the functionality itself is
-     * complete.
-     */
+    rc = buffer_resize(&buf, 17);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->size, 32);
+
+    rc = buffer_resize(&buf, 32);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 2);
+    TEST_EQUAL(buf->size, 32);
+
+    rc = buffer_resize(&buf, 1);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 16);
+
+    rc = buffer_resize(&buf, 128);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 8);
+    TEST_EQUAL(buf->size, 128);
 
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
