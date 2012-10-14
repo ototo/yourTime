@@ -68,7 +68,7 @@ int buffer_resize(Buffer **buffer, unsigned int new_size)
                                 true);
     else {
         BufferPage *prev_page = NULL;
-        BufferPage *page = buf->head;
+        BufferPage *page = buf->head_page;
         buf->pages = pages_needed;
         buf->size = pages_needed * buf->page_size;
         while (pages_needed) {
@@ -80,18 +80,19 @@ int buffer_resize(Buffer **buffer, unsigned int new_size)
         }
         if (prev_page) {
             prev_page->next = NULL;
-            buf->tail = prev_page;
+            buf->tail_page = prev_page;
         }
         else {
-            buf->head = buf->tail = buf->tip = NULL;
-            buf->tip_offset = 0;
+            buf->head_page = buf->tail_page = buf->tip_page = NULL;
+            buf->tip_page_offset = 0;
         }
 
         BufferPage *to_free = NULL;
         while (page) {
-            if (buf->tip == page) {
-                buf->tip = buf->tail;
-                buf->tip_offset = buf->page_size;
+            if (buf->tip_page == page) {
+                buf->tip_page = buf->tail_page;
+                buf->tip_page_offset = buf->page_size;
+                buf->tip = buf->tail_page->offset + buf->page_size;
             }
             to_free = page;
             page = page->next;
@@ -114,7 +115,7 @@ int buffer_free(Buffer **buffer)
         return RC_OK;
 
     BufferPage *current;
-    BufferPage *page = (*buffer)->head;
+    BufferPage *page = (*buffer)->head_page;
     while (page) {
         current = page;
         page = page->next;
@@ -201,7 +202,7 @@ int buffer_get_as_string(Buffer **buffer, String *str)
         return rc;
 
     Buffer *buf = *buffer;
-    BufferPage *page = buf->head;
+    BufferPage *page = buf->head_page;
     unsigned int chars_left = buf->used;
     char *copy_to = new_str.chars;
     div_t r = div(buf->used, buf->page_size);
@@ -237,7 +238,7 @@ int buffer_append(Buffer **buffer, const char *string, unsigned int size)
     const char *chars_to_append = string;
 
     while (left_to_append) {
-        if (!buf->head || (buf->used == buf->size)) {
+        if (!buf->head_page || (buf->used == buf->size)) {
             buffer_add_pages(buffer, 1, 0);
             continue;
         }
@@ -247,7 +248,7 @@ int buffer_append(Buffer **buffer, const char *string, unsigned int size)
             unsigned int to_copy = (available < left_to_append)
                         ? available
                         : left_to_append;
-            memcpy(buf->tail->data + r.rem, chars_to_append, to_copy);
+            memcpy(buf->tail_page->data + r.rem, chars_to_append, to_copy);
             left_to_append -= to_copy;
             chars_to_append += to_copy;
             buf->used += to_copy;
@@ -311,8 +312,9 @@ int buffer_seek(Buffer **buffer, int seek_mode,
             return RC_E_INVALID_ARGS;
 
         unsigned int current_page = 0;
-        for (BufferPage *page = buf->head; page; page = page->next) {
-            if (page == buf->tip)
+        for (BufferPage *page = buf->head_page; page; page = page->next)
+        {
+            if (page == buf->tip_page)
                 break;
             ++current_page;
         }
@@ -340,7 +342,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
         return RC_E_INVALID_ARGS;
     }
 
-    BufferPage *p = buf->head;
+    BufferPage *p = buf->head_page;
     unsigned int idx;
 
     for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
@@ -348,8 +350,8 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     if (idx != target_page)
         return RC_E_OUT_OF_BOUNDS;
 
-    buf->tip = p;
-    buf->tip_offset = offset;
+    buf->tip_page = p;
+    buf->tip_page_offset = offset;
 
     if (seek_page)
         *seek_page = target_page;
@@ -400,6 +402,18 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
 
     int page_size = buf->page_size;
 
+    unsigned int current_page_offset;
+    BufferPage **ppage; /* pointer to the pointer to update */
+
+    if (buf->head_page) {
+        current_page_offset = buf->tail_page->offset + buf->page_size;
+        ppage = &buf->tail_page->next;
+    }
+    else {
+        current_page_offset = 0;
+        ppage = &buf->head_page;
+    }
+
     for (int page_nr = 0; page_nr < pages; ++page_nr) {
         BufferPage *page = malloc(sizeof(BufferPage) + page_size);
         if (!page)
@@ -407,24 +421,25 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
 
         memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
 
-        if (!buf->head)
-            buf->head = page;
-        else
-            buf->tail->next = page;
-        buf->tail = page;
+        page->offset = current_page_offset;
+        current_page_offset += buf->page_size;
+        *ppage = page;
+        ppage = &page->next;
+        buf->tail_page = page;
         buf->pages += 1;
         buf->size += buf->page_size;
     }
 
-    if (!buf->tip)
-        buf->tip = buf->head;
+    if (!buf->tip_page)
+        buf->tip_page = buf->head_page;
 
-    // when adding pages need to adjust the tip pointer as it points to
-    // the next available byte in the buffer (except for the case, when
-    // all the allocated pages are used up).
-    if (buf->tip_offset >= buf->page_size) {
-        buf->tip = buf->tip->next;
-        buf->tip_offset = 0;
+    // when adding pages need to adjust the tip_page pointer as it
+    // points to  the next available byte in the buffer (except for the
+    // case, when all the allocated pages are used up).
+    if (buf->tip_page_offset >= buf->page_size && buf->tip_page->next) {
+        buf->tip_page = buf->tip_page->next;
+        buf->tip = buf->tip_page->offset;
+        buf->tip_page_offset = 0;
     }
 
     return RC_OK;

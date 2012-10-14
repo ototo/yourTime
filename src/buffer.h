@@ -24,10 +24,13 @@
 typedef struct _BufferPage BufferPage;
 struct _BufferPage
 {
-    BufferPage  *next;      /* next page moving from head to tail */
-    char        data[];     /* data buffer itself */
+    BufferPage      *next;  /* next page moving from head_page to
+                               tail_page */
+    unsigned int    offset; /* offset from the beginning of the buffer
+                               to the first char in this page */
+    char            data[]; /* data buffer itself - allocated with this
+                               structure*/
 };
-
 
 
 /* Buffer of chars.
@@ -37,23 +40,28 @@ struct _BufferPage
  *   1. Allocated size (@size) - amount of memory allocated to the
  *      buffer; allocation is done with page granularity on demand.
  *   2. Used size (@used) - amount of memory used by writing data.
- *   3. Current buffer pointer (@tip, @tip_offset) - points to the next
- *      char that will be read/written to.
+ *   3. Current buffer pointer (@tip_page, @tip_offset) - points to the
+ *      next char that will be read/written to.
  *
  * Appending to the buffer is always done starting from the char
  * following the one pointed to by @used offset.
  */
 struct _Buffer
 {
-    unsigned int    page_size;  /* size of a page */
-    unsigned int    pages;      /* number of allocated pages */
-    unsigned int    size;       /* allocated total size (all pages) */
-    unsigned int    used;       /* total used size (payload) */
-    BufferPage      *head;      /* the oldest page */
-    BufferPage      *tail;      /* most recently added page */
-    BufferPage      *tip;       /* the page containing the byte,
-                                   referred by the @tip_offset */
-    unsigned int    tip_offset; /* next byte to be written */
+    unsigned int    page_size;          /* size of a page */
+    unsigned int    pages;              /* number of allocated pages */
+    unsigned int    size;               /* allocated total size (all
+                                           pages) */
+    unsigned int    used;               /* total used size (buffer
+                                           payload) */
+    unsigned int    tip;                /* global offset to the next
+                                           byte to read/write to */
+    unsigned int    tip_page_offset;    /* next byte to be read/written
+                                           on the tip page */
+    BufferPage      *head_page;         /* the oldest page */
+    BufferPage      *tail_page;         /* most recently added page */
+    BufferPage      *tip_page;          /* the page containing the byte,
+                                           referred by the @tip */
 };
 
 typedef struct _Buffer Buffer;

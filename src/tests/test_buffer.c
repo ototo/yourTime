@@ -43,14 +43,14 @@ START_TEST(buffer, buffer_alloc)
     TEST_EQUAL(buf->page_size, 16);
     TEST_EQUAL(buf->pages, 1);
     TEST_EQUAL(buf->size, 16);
-    TEST_EQUAL(buf->tip_offset, 0);
-    TEST_NOT_EQUAL(buf->head, NULL);
-    TEST_EQUAL(buf->head, buf->tail);
-    TEST_EQUAL(buf->head, buf->tip);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_NOT_EQUAL(buf->head_page, NULL);
+    TEST_EQUAL(buf->head_page, buf->tail_page);
+    TEST_EQUAL(buf->head_page, buf->tip_page);
 
     SIGNAL_MARK;
     for (unsigned int offset = 0; offset < buf->page_size; ++offset)
-        buf->head->data[offset] = 0xFF;
+        buf->head_page->data[offset] = 0xFF;
 
     SIGNAL_MARK;
     rc = buffer_free(&buf);
@@ -621,8 +621,8 @@ START_TEST(buffer, buffer_seek)
     SIGNAL_MARK;
     rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 2, NULL, NULL, NULL);
     TEST_EQUAL(rc, RC_OK);
-    TEST_EQUAL(buf->tip_offset, 2);
-    TEST_EQUAL(buf->tip, buf->head);
+    TEST_EQUAL(buf->tip_page_offset, 2);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
 
     TEST_INCOMPLETE;
 
