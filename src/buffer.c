@@ -92,7 +92,7 @@ int buffer_resize(Buffer **buffer, unsigned int new_size)
             if (buf->tip_page == page) {
                 buf->tip_page = buf->tail_page;
                 buf->tip_page_offset = buf->page_size;
-                buf->tip = buf->tail_page->offset + buf->page_size;
+                buf->tip = buf->tail_page->start_offset + buf->page_size;
             }
             to_free = page;
             page = page->next;
@@ -136,7 +136,47 @@ int buffer_write(Buffer **buffer, const char *data, unsigned int size)
     if (!size)
         return RC_OK;
 
-    return RC_E_NOT_IMPLEMENTED;
+    Buffer *buf = *buffer;
+
+    unsigned int to_write = size;
+    unsigned int available = buf->page_size - buf->tip_page_offset;
+    const char *chars = data;
+    unsigned int chunk_size;
+
+    int rc;
+
+    while (to_write) {
+        if (!available) {
+            if (!buf->tip_page->next) {
+                rc = buffer_add_pages(buffer, 1, true);
+                if (rc != RC_OK)
+                    return rc;
+                continue;
+            }
+            buf->tip_page = buf->tip_page->next;
+            buf->tip = buf->tip_page->start_offset;
+            buf->tip_page_offset = 0;
+        }
+        chunk_size = (available < to_write)
+                   ? available
+                   : to_write;
+        memcpy(buf->tip_page->data + buf->tip_page_offset, chars,
+               chunk_size);
+        to_write -= chunk_size;
+        available -= chunk_size;
+        chars += chunk_size;
+
+        buf->tip_page_offset += chunk_size;
+        if (buf->tip_page_offset >= buf->page_size) {
+            buf->tip_page = buf->tip_page->next;
+            buf->tip_page_offset = buf->tip_page_offset - buf->page_size;
+        }
+        buf->tip = buf->tip_page->start_offset + buf->tip_page_offset;
+    }
+    if (buf->used < buf->tip)
+        buf->used = buf->tip;
+
+    return RC_OK;
 }
 
 
@@ -406,7 +446,8 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
     BufferPage **ppage; /* pointer to the pointer to update */
 
     if (buf->head_page) {
-        current_page_offset = buf->tail_page->offset + buf->page_size;
+        current_page_offset = buf->tail_page->start_offset
+                            + buf->page_size;
         ppage = &buf->tail_page->next;
     }
     else {
@@ -421,7 +462,7 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
 
         memset(page, 0, sizeof(BufferPage) + (zero_data ? page_size : 1));
 
-        page->offset = current_page_offset;
+        page->start_offset = current_page_offset;
         current_page_offset += buf->page_size;
         *ppage = page;
         ppage = &page->next;
@@ -438,7 +479,7 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
     // case, when all the allocated pages are used up).
     if (buf->tip_page_offset >= buf->page_size && buf->tip_page->next) {
         buf->tip_page = buf->tip_page->next;
-        buf->tip = buf->tip_page->offset;
+        buf->tip = buf->tip_page->start_offset;
         buf->tip_page_offset = 0;
     }
 

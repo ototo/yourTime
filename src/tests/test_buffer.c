@@ -174,8 +174,14 @@ START_TEST(buffer, buffer_write)
     rc = buffer_write(&buf, NULL, test_chars_len);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
+    SIGNAL_MARK;
     rc = buffer_write(&buf, test_chars, test_chars_len);
-    TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len);
+    TEST_EQUAL(buf->tip, test_chars_len);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+    TEST_EQUAL(buf->tip_page_offset, buf->tip);
 
     /* TODO: complete the test as soon as the functionality itself is
      * complete.

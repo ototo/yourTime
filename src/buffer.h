@@ -24,12 +24,13 @@
 typedef struct _BufferPage BufferPage;
 struct _BufferPage
 {
-    BufferPage      *next;  /* next page moving from head_page to
-                               tail_page */
-    unsigned int    offset; /* offset from the beginning of the buffer
-                               to the first char in this page */
-    char            data[]; /* data buffer itself - allocated with this
-                               structure*/
+    BufferPage      *next;          /* next page moving from head_page
+                                       to tail_page */
+    unsigned int    start_offset;   /* offset from the beginning of the
+                                       buffer to the first char in this
+                                       page */
+    char            data[];         /* data buffer itself - allocated
+                                       with this structure*/
 };
 
 
@@ -56,8 +57,9 @@ struct _Buffer
                                            payload) */
     unsigned int    tip;                /* global offset to the next
                                            byte to read/write to */
-    unsigned int    tip_page_offset;    /* next byte to be read/written
-                                           on the tip page */
+    unsigned int    tip_page_offset;    /* in-page offset to the next
+                                           byte to be read/written on
+                                           the tip page */
     BufferPage      *head_page;         /* the oldest page */
     BufferPage      *tail_page;         /* most recently added page */
     BufferPage      *tip_page;          /* the page containing the byte,
