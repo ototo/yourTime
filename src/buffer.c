@@ -185,7 +185,8 @@ int buffer_write_string(Buffer **buffer, const String *str)
     if (!str->chars)
         return RC_OK;
 
-    return RC_E_NOT_IMPLEMENTED;
+    /* TODO: store string length inside of String) */
+    return buffer_write(buffer, str->chars, strlen(str->chars));
 }
 
 

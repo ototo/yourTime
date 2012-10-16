@@ -195,11 +195,9 @@ START_TEST(buffer, buffer_write)
 
     SIGNAL_MARK;
     for (int i = 0; i < 100; ++i) {
-        TEST_START_ITERATION(i, 99);
         rc = buffer_write(&buf, "A", 1);
-        TEST_EQUAL(rc, RC_OK);
+        TEST_EQUAL_ITER(rc, RC_OK, i, 99);
     }
-    TEST_STOP_ITERATIONS;
     int consumed_size = test_chars_len * 2 + 100;
     div_t r = div(consumed_size, buf->page_size);
     int expected_pages = r.quot + (r.rem ? 1 : 0);
@@ -221,6 +219,7 @@ START_TEST(buffer, buffer_write)
 
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf, NULL);
 
 END_TEST
 
@@ -267,10 +266,11 @@ START_TEST(buffer, buffer_write_string)
 
     SIGNAL_MARK;
     rc = buffer_write_string(&buf, &str);
-    TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+    TEST_EQUAL(rc, RC_OK);
 
-    /* TODO: complete the test as soon as the functionality itself is
-     * complete.
+    /* As current implementation of buffer_write_string is just calling
+     * buffer_write, further tests are covered by buffer:buffer_write
+     * test.
      */
 
     rc = buffer_free(&buf);

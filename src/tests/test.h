@@ -60,10 +60,6 @@ int test_##test_name() \
     char *__test_name = #test_name;\
     int __test_failed = 0;\
     int __test_signal_line = __LINE__;\
-    int __test_iteration;\
-    int __test_iterations;\
-    __test_iteration = -1;\
-    __test_iterations = -1;\
     START_CATCHING_SIGNALS\
     CATCH_SIGNALS
 
@@ -72,14 +68,6 @@ int test_##test_name() \
     STOP_CATCHING_SIGNALS\
     return __test_failed;\
 }
-
-#define TEST_START_ITERATION(current, total)\
-    __test_iteration = current;\
-    __test_iterations = total
-
-#define TEST_STOP_ITERATIONS\
-    __test_iteration = -1;\
-    __test_iterations = -1
 
 #ifdef USE_ANSI_CODES
     #define ANSI_START_TEST "\033[2K\r"
@@ -120,61 +108,73 @@ int test_##test_name() \
 
 #define TEST_TRUE(expr) \
     if (!(expr)) {\
-        if (__test_iteration != -1)\
-            printf("%s%s:%d: Iteration %d/%d: Test for TRUE(" #expr\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
-        else\
-            printf("%s%s:%d: Test for TRUE(" #expr\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_suite, __test_name);\
+        printf("%s%s:%d: Test for TRUE(" #expr\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
+    }
+
+#define TEST_TRUE_ITER(expr, current, total) \
+    if (!(expr)) {\
+        printf("%s%s:%d: Iteration %d/%d: Test for TRUE(" #expr\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, current, total, __test_suite, __test_name);\
         ++__test_failed;\
     }
 
 #define TEST_FALSE(expr) \
     if ((expr)) {\
-        if (__test_iteration != -1)\
-            printf("%s%s:%d: Iteration %d/%d: Test for FALSE(" #expr\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
-        else\
-            printf("%s%s:%d: Test for FALSE(" #expr\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_suite, __test_name);\
+        printf("%s%s:%d: Test for FALSE(" #expr\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
+    }
+
+#define TEST_FALSE_ITER(expr, current, total) \
+    if ((expr)) {\
+        printf("%s%s:%d: Iteration %d/%d: Test for FALSE(" #expr\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, current, total, __test_suite, __test_name);\
         ++__test_failed;\
     }
 
 #define TEST_EQUAL(expr1, expr2) \
     if ((expr1) != (expr2)) {\
-        if (__test_iteration != -1)\
-            printf("%s%s:%d: Iteration %d/%d: Test for EQUAL(" #expr1 ", " #expr2\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
-        else\
-            printf("%s%s:%d: Test for EQUAL(" #expr1 ", " #expr2\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_suite, __test_name);\
+        printf("%s%s:%d: Test for EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
+    }
+
+#define TEST_EQUAL_ITER(expr1, expr2, current, total) \
+    if ((expr1) != (expr2)) {\
+        printf("%s%s:%d: Iteration %d/%d: Test for EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, current, total, __test_suite, __test_name);\
         ++__test_failed;\
     }
 
 #define TEST_NOT_EQUAL(expr1, expr2) \
     if ((expr1) == (expr2)) {\
-        if (__test_iteration != -1)\
-            printf("%s%s:%d: Iteration %d/%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
-        else\
-            printf("%s%s:%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
-                    ") in %s:%s has failed!\n",\
-            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, __LINE__, __test_suite, __test_name);\
+        printf("%s%s:%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
+    }
+
+#define TEST_NOT_EQUAL_ITER(expr1, expr2, current, total) \
+    if ((expr1) == (expr2)) {\
+        printf("%s%s:%d: Iteration %d/%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
+                ") in %s:%s has failed!\n",\
+        (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+        __FILE__, __LINE__, current, total, __test_suite, __test_name);\
         ++__test_failed;\
     }
 
