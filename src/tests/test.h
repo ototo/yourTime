@@ -26,17 +26,18 @@
     reset_signal_handlers();
 
 #define SIGNAL_MARK \
-    signal_line = __LINE__;
+    __test_signal_line = __LINE__;
 
 #define RECATCH_SIGNALS \
     }\
     CATCH_SIGNALS
 
 #define CATCH_SIGNALS \
-    if (sigsetjmp(g_sig_env, 1)) {\
+    if (sigsetjmp(__test_g_sig_env, 1)) {\
          printf("%s%s:%d: Signal %d:%s caught in %s:%s!\n Backtrace is:\n",\
-             (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-            __FILE__, signal_line, g_signo, signame(g_signo), suite, name);\
+             (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __test_signal_line, __test_g_signo,\
+            signame(__test_g_signo), __test_suite, __test_name);\
         void *array[BACKTRACE_SIZE];\
         size_t size;\
         size = backtrace(array, BACKTRACE_SIZE);\
@@ -48,25 +49,37 @@
                 printf(" * %s\n", symbols[idx]);\
         }\
         free(symbols);\
-        ++failed;\
+        ++__test_failed;\
     }\
     else {
 
 #define START_TEST(suite_name, test_name) \
 int test_##test_name() \
 {\
-    char *suite = #suite_name;\
-    char *name = #test_name;\
-    int failed = 0;\
-    int signal_line = __LINE__;\
+    char *__test_suite = #suite_name;\
+    char *__test_name = #test_name;\
+    int __test_failed = 0;\
+    int __test_signal_line = __LINE__;\
+    int __test_iteration;\
+    int __test_iterations;\
+    __test_iteration = -1;\
+    __test_iterations = -1;\
     START_CATCHING_SIGNALS\
     CATCH_SIGNALS
 
 #define END_TEST \
     }\
     STOP_CATCHING_SIGNALS\
-    return failed;\
+    return __test_failed;\
 }
+
+#define TEST_START_ITERATION(current, total)\
+    __test_iteration = current;\
+    __test_iterations = total
+
+#define TEST_STOP_ITERATIONS\
+    __test_iteration = -1;\
+    __test_iterations = -1
 
 #ifdef USE_ANSI_CODES
     #define ANSI_START_TEST "\033[2K\r"
@@ -107,53 +120,77 @@ int test_##test_name() \
 
 #define TEST_TRUE(expr) \
     if (!(expr)) {\
-        printf("%s%s:%d: Test for TRUE(" #expr\
-                ") in %s:%s has failed!\n",\
-        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-        __FILE__, __LINE__, suite, name);\
-        ++failed;\
+        if (__test_iteration != -1)\
+            printf("%s%s:%d: Iteration %d/%d: Test for TRUE(" #expr\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
+        else\
+            printf("%s%s:%d: Test for TRUE(" #expr\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
     }
 
 #define TEST_FALSE(expr) \
     if ((expr)) {\
-        printf("%s%s:%d: Test for FALSE(" #expr\
-                ") in %s:%s has failed!\n",\
-        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-        __FILE__, __LINE__, suite, name);\
-        ++failed;\
+        if (__test_iteration != -1)\
+            printf("%s%s:%d: Iteration %d/%d: Test for FALSE(" #expr\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
+        else\
+            printf("%s%s:%d: Test for FALSE(" #expr\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
     }
 
 #define TEST_EQUAL(expr1, expr2) \
     if ((expr1) != (expr2)) {\
-        printf("%s%s:%d: Test for EQUAL(" #expr1 ", " #expr2\
-                ") in %s:%s has failed!\n",\
-        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-        __FILE__, __LINE__, suite, name);\
-        ++failed;\
+        if (__test_iteration != -1)\
+            printf("%s%s:%d: Iteration %d/%d: Test for EQUAL(" #expr1 ", " #expr2\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
+        else\
+            printf("%s%s:%d: Test for EQUAL(" #expr1 ", " #expr2\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
     }
 
 #define TEST_NOT_EQUAL(expr1, expr2) \
     if ((expr1) == (expr2)) {\
-        printf("%s%s:%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
-                ") in %s:%s has failed!\n",\
-        (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-        __FILE__, __LINE__, suite, name);\
-        ++failed;\
+        if (__test_iteration != -1)\
+            printf("%s%s:%d: Iteration %d/%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_iteration, __test_iterations, __test_suite, __test_name);\
+        else\
+            printf("%s%s:%d: Test for NOT EQUAL(" #expr1 ", " #expr2\
+                    ") in %s:%s has failed!\n",\
+            (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+            __FILE__, __LINE__, __test_suite, __test_name);\
+        ++__test_failed;\
     }
 
 #define TEST_NOT_IMPLEMENTED \
     printf("%s%s:%d: Test not implemented for %s:%s!\n",\
-    (failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
-    __FILE__, __LINE__, suite, name);\
-    ++failed;\
+    (__test_failed ? "" : ANSI_START_FAIL "FAIL" ANSI_STOP_FAIL "\n"),\
+    __FILE__, __LINE__, __test_suite, __test_name);\
+    ++__test_failed;\
 
 #define TEST_INCOMPLETE \
     bool is_test_complete = false;\
     TEST_TRUE(is_test_complete);
 
 
-extern int g_signo;
-extern sigjmp_buf g_sig_env;
+extern int __test_g_signo;
+extern sigjmp_buf __test_g_sig_env;
 char *signame(int signo);
 void setup_signal_handlers();
 void reset_signal_handlers();

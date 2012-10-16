@@ -31,8 +31,8 @@ typedef struct _TestRecord TestRecord;
 
 
 /* stuff needed to catch signals generated while running tests */
-sigjmp_buf g_sig_env;
-int g_signo;
+sigjmp_buf __test_g_sig_env;
+int __test_g_signo;
 
 char *signame(int signo)
 {
@@ -56,14 +56,14 @@ char *signame(int signo)
 
 static void catch_signal(int signo)
 {
-    g_signo = signo;
-    siglongjmp(g_sig_env, signo);
+    __test_g_signo = signo;
+    siglongjmp(__test_g_sig_env, signo);
     return;
 }
 
 void setup_signal_handlers()
 {
-    g_signo = 0;
+    __test_g_signo = 0;
     sigset(SIGINT, catch_signal);
     sigset(SIGFPE, catch_signal);
     sigset(SIGSEGV, catch_signal);

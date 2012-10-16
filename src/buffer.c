@@ -151,6 +151,7 @@ int buffer_write(Buffer **buffer, const char *data, unsigned int size)
                 rc = buffer_add_pages(buffer, 1, true);
                 if (rc != RC_OK)
                     return rc;
+                available = buf->page_size - buf->tip_page_offset;
                 continue;
             }
             buf->tip_page = buf->tip_page->next;
@@ -167,10 +168,6 @@ int buffer_write(Buffer **buffer, const char *data, unsigned int size)
         chars += chunk_size;
 
         buf->tip_page_offset += chunk_size;
-        if (buf->tip_page_offset >= buf->page_size) {
-            buf->tip_page = buf->tip_page->next;
-            buf->tip_page_offset = buf->tip_page_offset - buf->page_size;
-        }
         buf->tip = buf->tip_page->start_offset + buf->tip_page_offset;
     }
     if (buf->used < buf->tip)
@@ -480,7 +477,7 @@ int buffer_add_pages(Buffer **buffer, unsigned int pages,
     if (buf->tip_page_offset >= buf->page_size && buf->tip_page->next) {
         buf->tip_page = buf->tip_page->next;
         buf->tip = buf->tip_page->start_offset;
-        buf->tip_page_offset = 0;
+        buf->tip_page_offset = buf->tip_page_offset - buf->page_size;
     }
 
     return RC_OK;

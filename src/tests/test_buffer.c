@@ -183,9 +183,41 @@ START_TEST(buffer, buffer_write)
     TEST_EQUAL(buf->tip_page, buf->head_page);
     TEST_EQUAL(buf->tip_page_offset, buf->tip);
 
-    /* TODO: complete the test as soon as the functionality itself is
-     * complete.
-     */
+    SIGNAL_MARK;
+    rc = buffer_write(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len * 2);
+    TEST_EQUAL(buf->tip, test_chars_len * 2);
+    TEST_EQUAL(buf->pages, 2);
+    TEST_NOT_EQUAL(buf->tip_page, buf->head_page);
+    TEST_EQUAL(buf->tip_page, buf->tail_page);
+    TEST_EQUAL(buf->tip_page_offset, test_chars_len * 2 - buf->page_size);
+
+    SIGNAL_MARK;
+    for (int i = 0; i < 100; ++i) {
+        TEST_START_ITERATION(i, 99);
+        rc = buffer_write(&buf, "A", 1);
+        TEST_EQUAL(rc, RC_OK);
+    }
+    TEST_STOP_ITERATIONS;
+    int consumed_size = test_chars_len * 2 + 100;
+    div_t r = div(consumed_size, buf->page_size);
+    int expected_pages = r.quot + (r.rem ? 1 : 0);
+    TEST_EQUAL(buf->pages, expected_pages);
+    TEST_EQUAL(buf->used, consumed_size);
+    TEST_EQUAL(buf->tip, buf->used);
+
+    SIGNAL_MARK;
+    rc = buffer_write(&buf, 
+                     TEST_DATA_STRING TEST_DATA_STRING TEST_DATA_STRING,
+                     test_chars_len * 3);
+    TEST_EQUAL(rc, RC_OK);
+    consumed_size += test_chars_len * 3;
+    r = div(consumed_size, buf->page_size);
+    expected_pages = r.quot + (r.rem ? 1 : 0);
+    TEST_EQUAL(buf->pages, expected_pages);
+    TEST_EQUAL(buf->used, consumed_size);
+    TEST_EQUAL(buf->tip, buf->used);
 
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
