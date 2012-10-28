@@ -41,8 +41,8 @@ struct _BufferPage
  *   1. Allocated size (@size) - amount of memory allocated to the
  *      buffer; allocation is done with page granularity on demand.
  *   2. Used size (@used) - amount of memory used by writing data.
- *   3. Current buffer pointer (@tip_page, @tip_offset) - points to the
- *      next char that will be read/written to.
+ *   3. Current buffer pointer (@tip_page, @tip_page_offset) - points to
+ *      the next char that will be read/written to.
  *
  * Appending to the buffer is always done starting from the char
  * following the one pointed to by @used offset.

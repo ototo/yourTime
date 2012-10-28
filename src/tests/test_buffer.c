@@ -356,8 +356,35 @@ START_TEST(buffer, buffer_read)
     rc = buffer_read(&buf, chars, 16, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
+    read = -1;
     rc = buffer_read(&buf, chars, 16, &read);
-    TEST_EQUAL(rc, RC_E_NOT_IMPLEMENTED);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip, 0);
+
+    /* prepare data to be read */
+    memcpy(buf->head_page->data, test_chars, test_chars_len);
+    buf->used = test_chars_len;
+
+    read = -1;
+    rc = buffer_read(&buf, chars, 16, &read);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, test_chars_len);
+    TEST_EQUAL(buf->tip, test_chars_len);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+    TEST_EQUAL(buf->tip_page_offset, test_chars_len);
+    TEST_EQUAL(
+        0,
+        strncmp(chars, test_chars, test_chars_len));
+
+    read = -1;
+    rc = buffer_read(&buf, chars, 16, &read);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, 0);
+    TEST_EQUAL(buf->tip, test_chars_len);
+    TEST_EQUAL(buf->tip_page_offset, test_chars_len);
 
     /* TODO: complete the test as soon as the functionality itself is
      * complete.

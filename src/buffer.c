@@ -196,12 +196,55 @@ int buffer_read(Buffer **buffer, char *data, unsigned int size,
     if (!buffer || !*buffer || !data || !read)
         return RC_E_INVALID_ARGS;
 
-    if (!size) {
-        *read = 0;
+    Buffer *buf = *buffer;
+    *read = 0;
+
+    if (!size || buf->tip >= buf->used)
         return RC_OK;
+
+    int remaining_space = size;
+    int remaining_data = buf->used - buf->tip;
+    int remaining_page_data = buf->page_size - buf->tip_page_offset;
+
+    char *from = buf->tip_page->data + buf->tip_page_offset;
+    char *to = data;
+
+    /* min of three sizes */
+    int chunk_size = (remaining_page_data < remaining_data)
+                        ? ((remaining_page_data < remaining_space)
+                            ? remaining_page_data
+                            : remaining_space)
+                        : ((remaining_data < remaining_space)
+                            ? remaining_data
+                            : remaining_space);
+    while (chunk_size) {
+        memcpy(to, from, chunk_size);
+        to += chunk_size;
+        *read += chunk_size;
+        buf->tip_page_offset += chunk_size;
+        buf->tip += chunk_size;
+        if (buf->tip_page_offset >= buf->page_size &&
+                buf->tip_page->next) {
+            buf->tip_page = buf->tip_page->next;
+            buf->tip_page_offset = 0;
+        }
+
+        remaining_space -= chunk_size;
+        remaining_data = buf->used - buf->tip;
+        remaining_page_data = buf->page_size - buf->tip_page_offset;
+
+        from = buf->tip_page->data + buf->tip_page_offset;
+
+        chunk_size = (remaining_page_data < remaining_data)
+                        ? ((remaining_page_data < remaining_space)
+                            ? remaining_page_data
+                            : remaining_space)
+                        : ((remaining_data < remaining_space)
+                            ? remaining_data
+                            : remaining_space);
     }
 
-    return RC_E_NOT_IMPLEMENTED;
+    return RC_OK;
 }
 
 
