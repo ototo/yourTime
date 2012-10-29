@@ -297,7 +297,7 @@ START_TEST(buffer, buffer_read)
     TEST_EQUAL(read, -1);
 
     SIGNAL_MARK;
-    char chars[16];
+    char chars[32];
     rc = buffer_read(NULL, chars, 0, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
@@ -364,9 +364,12 @@ START_TEST(buffer, buffer_read)
     TEST_EQUAL(buf->tip_page_offset, 0);
     TEST_EQUAL(buf->tip, 0);
 
-    /* prepare data to be read */
-    memcpy(buf->head_page->data, test_chars, test_chars_len);
-    buf->used = test_chars_len;
+    /* prepare data to be read - one page */
+    rc = buffer_write(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, test_chars_len);
+    buf->tip = 0;
+    buf->tip_page_offset = 0;
 
     read = -1;
     rc = buffer_read(&buf, chars, 16, &read);
@@ -386,9 +389,25 @@ START_TEST(buffer, buffer_read)
     TEST_EQUAL(buf->tip, test_chars_len);
     TEST_EQUAL(buf->tip_page_offset, test_chars_len);
 
-    /* TODO: complete the test as soon as the functionality itself is
-     * complete.
-     */
+    /* now - add more data to get two pages allocated */
+    rc = buffer_write(&buf, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, 2 * test_chars_len);
+    buf->tip = 0;
+    buf->tip_page = buf->head_page;
+    buf->tip_page_offset = 0;
+
+    /* try reading two pages of data */
+    read = -1;
+    rc = buffer_read(&buf, chars, 32, &read);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(read, 2 * test_chars_len);
+    TEST_EQUAL(buf->tip, 2 * test_chars_len);
+    TEST_EQUAL(buf->tip_page, buf->tail_page);
+    TEST_EQUAL(buf->tip_page_offset, 2 * test_chars_len - buf->page_size);
+    TEST_EQUAL(
+        0,
+        strncmp(chars, TEST_DATA_STRING TEST_DATA_STRING, 2 * test_chars_len));
 
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
