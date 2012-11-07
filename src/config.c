@@ -339,11 +339,11 @@ int config_parse_file(Config *config, char *config_file)
     int line = 1;
     int column = 1;
 
-    int rc = buffer_alloc(16, &name_buf);
+    int rc = buffer_alloc(&name_buf, 16);
     if (rc) {
         goto exit;
     }
-    rc = buffer_alloc(512, &value_buf);
+    rc = buffer_alloc(&value_buf, 512);
     if (rc) {
         goto cleanup;
     }

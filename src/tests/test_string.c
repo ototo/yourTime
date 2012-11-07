@@ -14,7 +14,9 @@
 
 
 /* test data */
-static const char const *test_chars = "test chars";
+#define TEST_DATA_STRING "test chars"
+static const char const *test_chars = TEST_DATA_STRING;
+static unsigned int test_chars_len = sizeof(TEST_DATA_STRING) - 1;
 
 /* Test for allocation routine.
  *
@@ -83,20 +85,20 @@ END_TEST
 
 START_TEST(string, string_allocate_dynamic)
 
-    int rc = string_allocate_dynamic(NULL, NULL);
+    int rc = string_allocate_dynamic(NULL, NULL, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate_dynamic(NULL, test_chars);
+    rc = string_allocate_dynamic(NULL, test_chars, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
     String str;
-    rc = string_allocate_dynamic(&str, NULL);
+    rc = string_allocate_dynamic(&str, NULL, 0);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK
-    rc = string_allocate_dynamic(&str, test_chars);
+    rc = string_allocate_dynamic(&str, test_chars, 0);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.recycler, free);
     TEST_EQUAL(str.refcount, 1);
@@ -108,6 +110,14 @@ START_TEST(string, string_allocate_dynamic)
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(str.refcount, 0);
     TEST_EQUAL(str.chars, NULL);
+
+    SIGNAL_MARK
+    rc = string_allocate_dynamic(&str, test_chars, test_chars_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(str.recycler, free);
+    TEST_EQUAL(str.refcount, 1);
+    TEST_NOT_EQUAL(str.chars, NULL);
+    TEST_TRUE(strcmp(test_chars, str.chars) == 0);
 
 END_TEST
 
@@ -165,7 +175,7 @@ START_TEST(string, string_copy)
     int rc = string_allocate_static(&from_static, test_chars);
     TEST_EQUAL(rc, RC_OK);
 
-    rc = string_allocate_dynamic(&from_dynamic, test_chars);
+    rc = string_allocate_dynamic(&from_dynamic, test_chars, 0);
     TEST_EQUAL(rc, RC_OK);
 
     /* check for missing target */

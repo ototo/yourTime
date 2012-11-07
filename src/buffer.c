@@ -259,7 +259,32 @@ int buffer_read_string(Buffer **buffer, String *str, unsigned int size,
         return RC_OK;
     }
 
-    return RC_E_NOT_IMPLEMENTED;
+    String temp_str;
+    int rc = string_allocate(&temp_str, size);
+    if (rc != RC_OK)
+        return rc;
+
+    rc = buffer_read(buffer, temp_str.chars, size, read);
+    if (rc != RC_OK)
+        return rc;
+    temp_str.chars[*read] = '\0';
+
+    if (!*read)
+        return RC_OK;
+
+    if (*read < size) {
+        String str_resized;
+        rc = string_allocate_dynamic(&str_resized, temp_str.chars, *read);
+        if (rc != RC_OK)
+            return rc;
+        memcpy(str, &str_resized, sizeof(String));
+        rc = string_release(&temp_str);
+        return rc;
+    }
+
+    memcpy(str, &temp_str, sizeof(String));
+
+    return RC_OK;
 }
 
 
@@ -306,17 +331,17 @@ int buffer_get_as_string(Buffer **buffer, String *str)
     return RC_OK;
 }
 
-int buffer_append(Buffer **buffer, const char *string, unsigned int size)
+int buffer_append(Buffer **buffer, const char *chars, unsigned int size)
 {
     if (!buffer || !*buffer)
         return RC_E_INVALID_ARGS;
 
-    if (!string || !size)
+    if (!chars || !size)
         return RC_OK;
 
     Buffer *buf = *buffer;
     unsigned int left_to_append = size;
-    const char *chars_to_append = string;
+    const char *chars_to_append = chars;
 
     while (left_to_append) {
         if (!buf->head_page || (buf->used == buf->size)) {
@@ -342,7 +367,13 @@ int buffer_append(Buffer **buffer, const char *string, unsigned int size)
 
 int buffer_append_string(Buffer **buffer, String *str)
 {
-    return RC_E_NOT_IMPLEMENTED;
+    if (!buffer || !*buffer || !str)
+        return RC_E_INVALID_ARGS;
+
+    if (!str->chars)
+        return RC_OK;
+
+    return buffer_append(buffer, str->chars, strlen(str->chars));
 }
 
 
@@ -362,7 +393,15 @@ int buffer_used(Buffer **buffer, unsigned int *used)
 
 int buffer_allocated(Buffer **buffer, unsigned int *allocated)
 {
-    return RC_E_NOT_IMPLEMENTED;
+    if (!buffer || !allocated)
+        return RC_E_INVALID_ARGS;
+
+    if (!*buffer)
+        *allocated = 0;
+    else
+        *allocated = (*buffer)->pages * (*buffer)->page_size;
+
+    return RC_OK;
 }
 
 
@@ -431,6 +470,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     if (idx != target_page)
         return RC_E_OUT_OF_BOUNDS;
 
+    buf->tip = target_page * buf->page_size + offset;
     buf->tip_page = p;
     buf->tip_page_offset = offset;
 
@@ -447,7 +487,15 @@ int buffer_seek(Buffer **buffer, int seek_mode,
 
 int buffer_tip(Buffer **buffer, unsigned int *buffer_offset)
 {
-    return RC_E_NOT_IMPLEMENTED;
+    if (!buffer || !buffer_offset)
+        return RC_E_INVALID_ARGS;
+
+    if (!*buffer)
+        *buffer_offset = 0;
+    else
+        *buffer_offset = (*buffer)->tip;
+
+    return RC_OK;
 }
 
 

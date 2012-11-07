@@ -185,8 +185,8 @@ int test_##test_name() \
     ++__test_failed;\
 
 #define TEST_INCOMPLETE \
-    bool is_test_complete = false;\
-    TEST_TRUE(is_test_complete);
+    { bool is_test_complete = false;\
+      TEST_TRUE(is_test_complete); }
 
 
 extern int __test_g_signo;

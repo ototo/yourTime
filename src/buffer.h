@@ -177,7 +177,8 @@ int buffer_read(Buffer **buffer, char *data, unsigned int size,
  *
  * Parameters:
  *   @buffer        [in/out] buffer to modify;
- *   @str           [in] String to receive the data being read;
+ *   @str           [out] String to receive the data being read;
+ *                        the string is assumed to be unallocated;
  *   @size          [in] number of chars of data to be read;
  *   @read          [out] number of chars got read.
  *
