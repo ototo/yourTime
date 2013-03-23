@@ -12,9 +12,8 @@
 #include "string.h"
 
 #define BUF_SEEK_PAGE_OFFSET        0
-#define BUF_SEEK_PAGE_REL_OFFSET    1
-#define BUF_SEEK_BUFFER_OFFSET      2
-#define BUF_SEEK_BUFFER_REL_OFFSET  3
+#define BUF_SEEK_BUFFER_OFFSET      1
+#define BUF_SEEK_BUFFER_REL_OFFSET  2
 
 
 /* Page of Buffer.
@@ -279,7 +278,8 @@ int buffer_allocated(Buffer **buffer, unsigned int *allocated);
 /* Seek buffer by offset or page+offset.
  *
  * Two modes are supported - seeking by a global offset in the buffer and
- * seeking by page number and intrapage offset.
+ * seeking by page number and intra-page offset. Seeks within allocated
+ * pages succeed.
  *
  * Parameters:
  *   @buffer         [in] buffer to seek;
@@ -299,7 +299,7 @@ int buffer_allocated(Buffer **buffer, unsigned int *allocated);
  *   RC_E_CORRUPTION        when data integrity is broken.
  */
 int buffer_seek(Buffer **buffer, int seek_mode,
-                   unsigned int seek_offset, unsigned int *seek_page,
+                   int seek_offset, int *seek_page,
                    BufferPage **page, unsigned int *page_offset);
 
 

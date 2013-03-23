@@ -38,7 +38,7 @@ int buffer_alloc(Buffer **buffer, unsigned int page_size)
 
     buf->page_size = page_size;
 
-    int rc = buffer_add_pages(&buf, 1, 0);
+    int rc = buffer_add_pages(&buf, 1, false);
     if (rc) {
         free(buf);
         return rc;
@@ -406,7 +406,7 @@ int buffer_allocated(Buffer **buffer, unsigned int *allocated)
 
 
 int buffer_seek(Buffer **buffer, int seek_mode,
-                   unsigned int seek_offset, unsigned int *seek_page,
+                   int seek_offset, int *seek_page,
                    BufferPage **page, unsigned int *page_offset)
 {
     if (!buffer)
@@ -427,21 +427,6 @@ int buffer_seek(Buffer **buffer, int seek_mode,
         offset = seek_offset;
         break;
 
-    case BUF_SEEK_PAGE_REL_OFFSET:
-        if (!seek_page)
-            return RC_E_INVALID_ARGS;
-
-        unsigned int current_page = 0;
-        for (BufferPage *page = buf->head_page; page; page = page->next)
-        {
-            if (page == buf->tip_page)
-                break;
-            ++current_page;
-        }
-        target_page = current_page + *seek_page;
-        offset = seek_offset;
-        break;
-
     case BUF_SEEK_BUFFER_OFFSET:
         {
             div_t q = div(seek_offset, buf->page_size);
@@ -452,7 +437,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
 
     case BUF_SEEK_BUFFER_REL_OFFSET:
         {
-            div_t q = div(buf->used + seek_offset, buf->page_size);
+            div_t q = div(buf->tip + seek_offset, buf->page_size);
             target_page = q.quot;
             offset = q.rem;
         }
@@ -465,7 +450,7 @@ int buffer_seek(Buffer **buffer, int seek_mode,
     BufferPage *p = buf->head_page;
     unsigned int idx;
 
-    for (idx = 0; p && idx < target_page; p = p->next, ++idx) ;
+    for (idx = 0; p && p->next && idx < target_page; p = p->next, ++idx);
 
     if (idx != target_page)
         return RC_E_OUT_OF_BOUNDS;

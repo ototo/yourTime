@@ -101,6 +101,7 @@ START_TEST(buffer, buffer_resize)
     TEST_EQUAL(buf->pages, 8);
     TEST_EQUAL(buf->size, 128);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -128,6 +129,7 @@ START_TEST(buffer, buffer_free)
     TEST_EQUAL(rc, RC_OK);
     TEST_NOT_EQUAL(buf, NULL);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -217,6 +219,7 @@ START_TEST(buffer, buffer_write)
     TEST_EQUAL(buf->used, consumed_size);
     TEST_EQUAL(buf->tip, buf->used);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -273,6 +276,7 @@ START_TEST(buffer, buffer_write_string)
      * test.
      */
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
 
@@ -409,6 +413,7 @@ START_TEST(buffer, buffer_read)
         0,
         strncmp(chars, TEST_DATA_STRING TEST_DATA_STRING, 2 * test_chars_len));
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -497,6 +502,7 @@ START_TEST(buffer, buffer_read_string)
     TEST_EQUAL(rc, RC_OK);
 
     /* prepare data to be read */
+    SIGNAL_MARK;
     memcpy(buf->head_page->data, test_chars, test_chars_len);
     buf->used = test_chars_len;
     rc = buffer_read_string(&buf, &str, 16, &read);
@@ -513,9 +519,11 @@ START_TEST(buffer, buffer_read_string)
      * test.
      */
 
+    SIGNAL_MARK;
     rc = string_release(&str);
     TEST_EQUAL(rc, RC_OK);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -575,6 +583,8 @@ START_TEST(buffer, buffer_get_as_string)
         TEST_EQUAL(rc, RC_OK);
     }
     TEST_EQUAL(buf->pages, r.quot + (r.rem ? 1 : 0));
+
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -658,6 +668,7 @@ START_TEST(buffer, buffer_append)
     TEST_EQUAL(buf->used, test_chars_len * 2 + buf->page_size);
     TEST_EQUAL(buf->tip, 0);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
 
@@ -670,20 +681,25 @@ END_TEST
 
 START_TEST(buffer, buffer_append_string)
 
+    SIGNAL_MARK;
     int rc = buffer_append_string(NULL, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
+    SIGNAL_MARK;
     String str;
     rc = string_allocate_static(&str, "");
     TEST_EQUAL(rc, RC_OK);
 
+    SIGNAL_MARK;
     rc = buffer_append_string(NULL, &str);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
+    SIGNAL_MARK;
     Buffer *buf;
     rc = buffer_alloc(&buf, 16);
     TEST_EQUAL(rc, RC_OK);
 
+    SIGNAL_MARK;
     rc = buffer_append_string(&buf, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
@@ -692,16 +708,18 @@ START_TEST(buffer, buffer_append_string)
      * test.
      */
 
-     rc = buffer_append_string(&buf, &str);
-     TEST_EQUAL(rc, RC_OK);
-     TEST_EQUAL(buf->used, 0);
-     TEST_EQUAL(buf->tip, 0);
+    rc = buffer_append_string(&buf, &str);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip, 0);
 
-     rc = string_release(&str);
-     TEST_EQUAL(rc, RC_OK);
+    SIGNAL_MARK;
+    rc = string_release(&str);
+    TEST_EQUAL(rc, RC_OK);
 
-     rc = buffer_free(&buf);
-     TEST_EQUAL(rc, RC_OK);
+    SIGNAL_MARK;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
 
 END_TEST
 
@@ -745,6 +763,7 @@ START_TEST(buffer, buffer_used)
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->used, test_chars_len);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf, NULL);
@@ -791,6 +810,7 @@ START_TEST(buffer, buffer_allocated)
     TEST_EQUAL(buf->used, test_chars_len);
     TEST_EQUAL(buf->pages, 2);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
 
@@ -802,36 +822,133 @@ END_TEST
  */
 START_TEST(buffer, buffer_seek)
 
+    char data[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    int data_len = sizeof(data) / sizeof(data[0]);
+
     int rc = buffer_seek(NULL, 0, 0, NULL, NULL, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
     SIGNAL_MARK;
     Buffer *buf = NULL;
-    rc = buffer_alloc(&buf, 16);
+    rc = buffer_alloc(&buf, data_len);
     TEST_EQUAL(rc, RC_OK);
-    TEST_EQUAL(buf->size, 16);
+    TEST_EQUAL(buf->size, data_len);
+    TEST_EQUAL(buf->used, 0);
 
+    /* test for wrong seek type */
     SIGNAL_MARK;
-    rc = buffer_seek(&buf, -1, 0, NULL, NULL, NULL);
+    rc = buffer_seek(&buf, -1, 2, NULL, NULL, NULL);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
 
-    /******** seek by absolute page offset ********/
-    TEST_INCOMPLETE;
-
-    /******** seek by relative page offset ********/
-    TEST_INCOMPLETE;
-
-    /******** seek by absolute buffer offset ********/
+    /* test for missing page number */
     SIGNAL_MARK;
-    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 2, NULL, NULL, NULL);
+    rc = buffer_seek(&buf, BUF_SEEK_PAGE_OFFSET, 2, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    /******** BUF_SEEK_PAGE_OFFSET ********/
+    /* seek an empty buffer - inside of preallocated page */
+    SIGNAL_MARK;
+    int page = 0;
+    rc = buffer_seek(&buf, BUF_SEEK_PAGE_OFFSET, 2, &page, NULL, NULL);
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buf->tip_page_offset, 2);
     TEST_EQUAL(buf->tip_page, buf->head_page);
+    TEST_EQUAL(page, 0);
 
-    TEST_INCOMPLETE;
+    /* seek an empty buffer - beyond the preallocated page */
+    page = 1;
+    rc = buffer_seek(&buf, BUF_SEEK_PAGE_OFFSET, 2, &page, NULL, NULL);
+    TEST_EQUAL(rc, RC_E_OUT_OF_BOUNDS);
+    TEST_EQUAL(buf->tip_page_offset, 2);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
 
-    /******** seek by relative buffer offset ********/
-    TEST_INCOMPLETE;
+    /* prepare a two-page buffer with data */
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 0, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    rc = buffer_write(&buf, data, data_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, data_len);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->tip, buf->used);
+    TEST_EQUAL(buf->tip_page_offset, data_len);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    rc = buffer_write(&buf, data, data_len);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->used, data_len * 2);
+    TEST_EQUAL(buf->pages, 2);
+
+    /* seek to second page and back */
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_PAGE_OFFSET, 2, &page, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip_page_offset, 2);
+    TEST_EQUAL(buf->tip, data_len + 2);
+    TEST_EQUAL(buf->tip_page, buf->head_page->next);
+
+    page = 0;
+    rc = buffer_seek(&buf, BUF_SEEK_PAGE_OFFSET, 2, &page, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip_page_offset, 2);
+    TEST_EQUAL(buf->tip, 2);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    /******** BUF_SEEK_BUFFER_OFFSET ********/
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 0, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, data_len, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip, data_len);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page->next);
+
+    /******** BUF_SEEK_BUFFER_REL_OFFSET ********/
+    SIGNAL_MARK;
+    rc = buffer_seek(&buf, BUF_SEEK_BUFFER_OFFSET, 0, NULL, NULL, NULL);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page_offset, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    /* forward swipe */
+    div_t r;
+    int total = data_len * 2;
+    for (int idx = 1; idx < total; ++idx) {
+        rc = buffer_seek(&buf, BUF_SEEK_BUFFER_REL_OFFSET, +1,
+                         NULL, NULL, NULL);
+        TEST_EQUAL_ITER(rc, RC_OK, idx, total);
+        TEST_EQUAL_ITER(buf->tip, idx, idx, total);
+        r = div(idx, buf->page_size);
+        TEST_EQUAL_ITER(buf->tip_page_offset, r.rem, idx, total);
+    }
+
+    for (int idx = 2; idx < total; ++idx) {
+        rc = buffer_seek(&buf, BUF_SEEK_BUFFER_REL_OFFSET, -1,
+                         NULL, NULL, NULL);
+        TEST_EQUAL_ITER(rc, RC_OK, idx, total);
+        TEST_EQUAL_ITER(buf->tip, total - idx, idx, total);
+        r = div(total - idx, buf->page_size);
+        TEST_EQUAL_ITER(buf->tip_page_offset, r.rem, idx, total);
+    }
+
+    SIGNAL_MARK;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
 
 END_TEST
 
@@ -890,6 +1007,7 @@ START_TEST(buffer, buffer_tip)
     TEST_EQUAL(rc, RC_OK);
     TEST_EQUAL(buffer_offset, test_chars_len);
 
+    SIGNAL_MARK;
     rc = buffer_free(&buf);
     TEST_EQUAL(rc, RC_OK);
 
@@ -910,6 +1028,48 @@ START_TEST(buffer, buffer_add_pages)
     int rc = buffer_add_pages(NULL, 0, false);
     TEST_EQUAL(rc, RC_E_INVALID_ARGS);
 
-    TEST_INCOMPLETE;
+    SIGNAL_MARK;
+    Buffer *buf = NULL;
+    rc = buffer_add_pages(&buf, 0, false);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+
+    SIGNAL_MARK;
+    rc = buffer_alloc(&buf, 16);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 1 * 16);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    rc = buffer_add_pages(&buf, 0, false);
+    TEST_EQUAL(rc, RC_E_INVALID_ARGS);
+    TEST_EQUAL(buf->pages, 1);
+    TEST_EQUAL(buf->size, 1 * 16);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    SIGNAL_MARK;
+    rc = buffer_add_pages(&buf, 1, false);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 2);
+    TEST_EQUAL(buf->size, 2 * 16);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    SIGNAL_MARK;
+    rc = buffer_add_pages(&buf, 6, false);
+    TEST_EQUAL(rc, RC_OK);
+    TEST_EQUAL(buf->pages, 8);
+    TEST_EQUAL(buf->size, 8 * 16);
+    TEST_EQUAL(buf->used, 0);
+    TEST_EQUAL(buf->tip, 0);
+    TEST_EQUAL(buf->tip_page, buf->head_page);
+
+    SIGNAL_MARK;
+    rc = buffer_free(&buf);
+    TEST_EQUAL(rc, RC_OK);
 
 END_TEST
